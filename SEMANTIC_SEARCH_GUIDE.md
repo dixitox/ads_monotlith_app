@@ -327,7 +327,7 @@ namespace RetailMonolith.Services
             };
 
             searchOptions.VectorSearch = new VectorSearchOptions();
-            searchOptions.VectorSearch.Queries.Add(new VectorizedQuery(queryEmbedding)
+            searchOptions.VectorSearch.Queries.Add(new VectorizedQuery(new ReadOnlyMemory<float>(queryEmbedding.ToArray()))
             {
                 KNearestNeighborsCount = maxResults,
                 Fields = { "Embedding" }
