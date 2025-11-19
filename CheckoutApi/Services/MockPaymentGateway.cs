@@ -1,5 +1,5 @@
-﻿
-namespace RetailMonolith.Services
+
+namespace CheckoutApi.Services
 {
     public class MockPaymentGateway : IPaymentGateway
     {

@@ -1,4 +1,4 @@
-﻿namespace RetailMonolith.Services
+namespace CheckoutApi.Services
 {
     //Mockable payment gateway interface
 

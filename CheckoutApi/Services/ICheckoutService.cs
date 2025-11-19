@@ -1,6 +1,6 @@
-﻿using RetailMonolith.Models;
+using CheckoutApi.Models;
 
-namespace RetailMonolith.Services
+namespace CheckoutApi.Services
 {
     public interface ICheckoutService
     {

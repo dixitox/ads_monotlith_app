@@ -1,8 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
-using RetailMonolith.Data;
-using RetailMonolith.Models;
+using Microsoft.EntityFrameworkCore;
+using CheckoutApi.Data;
+using CheckoutApi.Models;
 
-namespace RetailMonolith.Services
+namespace CheckoutApi.Services
 {
     public class CheckoutService : ICheckoutService
     {
