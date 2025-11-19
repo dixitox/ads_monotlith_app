@@ -123,7 +123,10 @@ sequenceDiagram
     CS->>DB: Add Order with OrderLines
     CS->>DB: Remove Cart and CartLines
     CS->>DB: SaveChangesAsync()
-    DB->>SQL: BEGIN TRANSACTION; INSERT Orders; DELETE Cart; COMMIT;
+    DB->>SQL: BEGIN TRANSACTION
+    DB->>SQL: INSERT Orders
+    DB->>SQL: DELETE Cart
+    DB->>SQL: COMMIT
     SQL-->>DB: Success
     
     DB-->>CS: Order Created
