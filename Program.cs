@@ -5,7 +5,7 @@ using RetailMonolith.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// DB — localdb for hack; swap to SQL in appsettings for Azure
+// DB ï¿½ localdb for hack; swap to SQL in appsettings for Azure
 builder.Services.AddDbContext<AppDbContext>(o =>
     o.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ??
                    "Server=(localdb)\\MSSQLLocalDB;Database=RetailMonolith;Trusted_Connection=True;MultipleActiveResultSets=true"));
@@ -16,6 +16,7 @@ builder.Services.AddRazorPages();
 builder.Services.AddScoped<IPaymentGateway, MockPaymentGateway>();
 builder.Services.AddScoped<ICheckoutService, CheckoutService>();
 builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
@@ -47,7 +48,7 @@ app.UseAuthorization();
 app.MapRazorPages();
 
 
-// minimal APIs for the “decomp” path
+// minimal APIs for the ï¿½decompï¿½ path
 app.MapPost("/api/checkout", async (ICheckoutService svc) =>
 {
     var order = await svc.CheckoutAsync("guest", "tok_test");
@@ -62,5 +63,39 @@ app.MapGet("/api/orders/{id:int}", async (int id, AppDbContext db) =>
     return order is null ? Results.NotFound() : Results.Ok(order);
 });
 
+// Chat API endpoint
+app.MapPost("/api/chat", async (IChatService chatService, ChatRequest request) =>
+{
+    try
+    {
+        if (string.IsNullOrWhiteSpace(request.Message))
+        {
+            return Results.BadRequest(new ChatResponse 
+            { 
+                Success = false, 
+                Error = "Message cannot be empty",
+                Message = string.Empty
+            });
+        }
+
+        var historyJson = System.Text.Json.JsonSerializer.Serialize(request.History);
+        var response = await chatService.GetChatResponseAsync(request.Message, historyJson);
+
+        return Results.Ok(new ChatResponse 
+        { 
+            Success = true, 
+            Message = response 
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new ChatResponse 
+        { 
+            Success = false, 
+            Error = ex.Message,
+            Message = "Sorry, I encountered an error. Please try again."
+        }, statusCode: 500);
+    }
+});
 
 app.Run();
