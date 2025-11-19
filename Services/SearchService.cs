@@ -201,7 +201,7 @@ namespace RetailMonolith.Services
                 };
 
                 // Add vector search - convert IReadOnlyList to ReadOnlyMemory
-                var vectorQuery = new VectorizedQuery(new ReadOnlyMemory<float>(queryEmbedding.ToArray()))
+                var vectorQuery = new VectorizedQuery(new ReadOnlyMemory<float>((float[])queryEmbedding))
                 {
                     KNearestNeighborsCount = maxResults,
                     Fields = { "Embedding" }
