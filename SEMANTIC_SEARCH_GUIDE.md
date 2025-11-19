@@ -297,7 +297,7 @@ namespace RetailMonolith.Services
                     Name = product.Name,
                     Description = product.Description,
                     Category = product.Category,
-                    Price = product.Price,
+                    Price = (double)product.Price,
                     IsActive = product.IsActive,
                     Embedding = embedding
                 });
