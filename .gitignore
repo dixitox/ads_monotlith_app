@@ -56,3 +56,8 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Environment variables (contains secrets)
+.env
+.env.local
+.env.*.local

@@ -31,53 +31,48 @@ This retail chat assistant is powered by Azure OpenAI (GPT-4/GPT-5) and provides
 
 ### 2. Update Configuration
 
-Edit `appsettings.json` and replace the placeholder values:
+**The application now reads credentials from environment variables instead of appsettings.json for security.**
 
+Set the following environment variables:
+
+**Linux/macOS:**
+```bash
+export AZURE_OPENAI_ENDPOINT="https://YOUR_RESOURCE_NAME.openai.azure.com/"
+export AZURE_OPENAI_API_KEY="your-api-key-here"
+```
+
+**Windows (Command Prompt):**
+```cmd
+set AZURE_OPENAI_ENDPOINT=https://YOUR_RESOURCE_NAME.openai.azure.com/
+set AZURE_OPENAI_API_KEY=your-api-key-here
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:AZURE_OPENAI_ENDPOINT="https://YOUR_RESOURCE_NAME.openai.azure.com/"
+$env:AZURE_OPENAI_API_KEY="your-api-key-here"
+```
+
+**For GitHub Codespaces:**
+Add `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_API_KEY` as repository secrets under Settings → Secrets and variables → Codespaces.
+
+**For local development with .env file:**
+1. Copy `.env.example` to `.env`
+2. Update the values in `.env` with your actual credentials
+3. The `.env` file is git-ignored to prevent accidental commits
+
+**Note:** The deployment name, max tokens, and temperature are still configured in `appsettings.json`:
 ```json
 "AzureOpenAI": {
-  "Endpoint": "https://YOUR_RESOURCE_NAME.openai.azure.com/",
-  "ApiKey": "YOUR_ACTUAL_API_KEY_HERE",
   "DeploymentName": "gpt-4",
   "MaxTokens": 800,
   "Temperature": 0.7
 }
 ```
 
-**Important**: For production, use Azure Key Vault or environment variables instead of storing the API key in appsettings.json:
-
-```bash
-# Set as environment variable (Linux/Mac)
-export AzureOpenAI__ApiKey="your-api-key-here"
-export AzureOpenAI__Endpoint="your-endpoint-here"
-
-# Set as environment variable (Windows)
-set AzureOpenAI__ApiKey=your-api-key-here
-set AzureOpenAI__Endpoint=your-endpoint-here
-```
-
 ### 3. For Production: Use Azure Key Vault
 
-Add to `appsettings.json`:
-```json
-"KeyVault": {
-  "VaultUri": "https://your-keyvault.vault.azure.net/"
-}
-```
-
-Update `Program.cs`:
-```csharp
-// Add this after builder creation
-if (builder.Environment.IsProduction())
-{
-    var keyVaultUri = builder.Configuration["KeyVault:VaultUri"];
-    if (!string.IsNullOrEmpty(keyVaultUri))
-    {
-        builder.Configuration.AddAzureKeyVault(
-            new Uri(keyVaultUri),
-            new DefaultAzureCredential());
-    }
-}
-```
+For production deployments on Azure, consider using Azure Key Vault or Managed Identity for enhanced security. The environment variable approach works well for both local development and cloud deployments when secrets are properly managed through GitHub Secrets, Azure App Service configuration, or similar secure storage.
 
 ## How It Works
 
