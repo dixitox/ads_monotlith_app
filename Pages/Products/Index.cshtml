@@ -7,6 +7,38 @@
     Products
 </h2>
 
+<!-- Search Interface -->
+<div class="container mb-4">
+    <form method="get" class="row g-3">
+        <div class="col-md-8">
+            <input type="text" 
+                   class="form-control" 
+                   name="SearchQuery" 
+                   value="@Model.SearchQuery" 
+                   placeholder="Search products naturally (e.g., 'comfortable running shoes')" 
+                   aria-label="Search products" />
+        </div>
+        <div class="col-md-4">
+            <button type="submit" class="btn btn-primary me-2">
+                <i class="bi bi-search"></i> Search
+            </button>
+            @if (!string.IsNullOrWhiteSpace(Model.SearchQuery))
+            {
+                <a href="/Products" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Clear
+                </a>
+            }
+        </div>
+    </form>
+    
+    @if (!string.IsNullOrWhiteSpace(Model.SearchQuery))
+    {
+        <div class="alert alert-info mt-3" role="alert">
+            Showing results for: <strong>@Model.SearchQuery</strong>
+        </div>
+    }
+</div>
+
 <div class="container">
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
         @foreach (var product in Model.Products)
