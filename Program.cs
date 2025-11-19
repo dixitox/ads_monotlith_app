@@ -5,7 +5,7 @@ using RetailMonolith.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// DB — localdb for hack; swap to SQL in appsettings for Azure
+// DB â€“ localdb for hack; swap to SQL in appsettings for Azure
 builder.Services.AddDbContext<AppDbContext>(o =>
     o.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ??
                    "Server=(localdb)\\MSSQLLocalDB;Database=RetailMonolith;Trusted_Connection=True;MultipleActiveResultSets=true"));
@@ -13,10 +13,16 @@ builder.Services.AddDbContext<AppDbContext>(o =>
 
 // Add services to the container.
 builder.Services.AddRazorPages();
-builder.Services.AddScoped<IPaymentGateway, MockPaymentGateway>();
-builder.Services.AddScoped<ICheckoutService, CheckoutService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddHealthChecks();
+
+// Add HttpClient for Checkout API
+builder.Services.AddHttpClient("CheckoutApi", client =>
+{
+    var baseUrl = builder.Configuration["CheckoutApi:BaseUrl"] ?? "http://localhost:5001";
+    client.BaseAddress = new Uri(baseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
 var app = builder.Build();
 
@@ -45,14 +51,7 @@ app.UseRouting();
 app.UseAuthorization();
 
 app.MapRazorPages();
-
-
-// minimal APIs for the “decomp” path
-app.MapPost("/api/checkout", async (ICheckoutService svc) =>
-{
-    var order = await svc.CheckoutAsync("guest", "tok_test");
-    return Results.Ok(new { order.Id, order.Status, order.Total });
-});
+app.MapHealthChecks("/health");
 
 app.MapGet("/api/orders/{id:int}", async (int id, AppDbContext db) =>
 {
