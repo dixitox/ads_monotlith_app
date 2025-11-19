@@ -28,11 +28,6 @@ builder.Services.Configure<AzureOpenAIConfiguration>(
 builder.Services.Configure<AzureSearchConfiguration>(
     builder.Configuration.GetSection("AzureSearch"));
 
-builder.Services.AddSingleton(sp => 
-    sp.GetRequiredService<IOptions<AzureOpenAIConfiguration>>().Value);
-builder.Services.AddSingleton(sp => 
-    sp.GetRequiredService<IOptions<AzureSearchConfiguration>>().Value);
-
 builder.Services.AddScoped<ISearchService, SearchService>();
 
 var app = builder.Build();
