@@ -84,6 +84,18 @@ namespace RetailMonolith.Services
             {
                 _logger.LogInformation("Initializing search index: {IndexName}", _searchConfig.IndexName);
 
+                // Delete existing index if it exists (to allow schema changes)
+                try
+                {
+                    await _indexClient!.DeleteIndexAsync(_searchConfig.IndexName, cancellationToken: ct);
+                    _logger.LogInformation("Deleted existing index");
+                    await WaitForIndexDeletionAsync(_searchConfig.IndexName, TimeSpan.FromSeconds(30), TimeSpan.FromMilliseconds(500), ct);
+                }
+                catch (Azure.RequestFailedException ex) when (ex.Status == 404)
+                {
+                    _logger.LogInformation("No existing index to delete");
+                }
+
                 // Define the vector search configuration
                 var vectorSearch = new VectorSearch();
                 vectorSearch.Profiles.Add(new VectorSearchProfile("vector-profile", "hnsw-config"));
@@ -142,7 +154,7 @@ namespace RetailMonolith.Services
                         Name = product.Name,
                         Description = product.Description,
                         Category = product.Category,
-                        Price = product.Price,
+                        Price = (double)product.Price,
                         IsActive = product.IsActive,
                         Embedding = embedding
                     };
@@ -188,8 +200,8 @@ namespace RetailMonolith.Services
                     Filter = "IsActive eq true"
                 };
 
-                // Add vector search
-                var vectorQuery = new VectorizedQuery(queryEmbedding)
+                // Add vector search - convert IReadOnlyList to ReadOnlyMemory
+                var vectorQuery = new VectorizedQuery(new ReadOnlyMemory<float>((float[])queryEmbedding))
                 {
                     KNearestNeighborsCount = maxResults,
                     Fields = { "Embedding" }
@@ -236,14 +248,14 @@ namespace RetailMonolith.Services
             }
         }
 
-        private async Task<ReadOnlyMemory<float>> GenerateEmbeddingAsync(string text, CancellationToken ct = default)
+        private async Task<IReadOnlyList<float>> GenerateEmbeddingAsync(string text, CancellationToken ct = default)
         {
             EnsureClientsInitialized();
             
             try
             {
                 var response = await _embeddingClient!.GenerateEmbeddingAsync(text, cancellationToken: ct);
-                return response.Value.ToFloats();
+                return response.Value.ToFloats().ToArray();
             }
             catch (Exception ex)
             {
