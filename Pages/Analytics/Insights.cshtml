@@ -1,0 +1,197 @@
+@page
+@model RetailMonolith.Pages.Analytics.InsightsModel
+@{
+    ViewData["Title"] = "Sales Insights";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="mb-4">
+                <i class="bi bi-graph-up"></i> Sales Insights
+            </h1>
+            <p class="text-muted">AI-powered analysis of your sales data using Azure OpenAI</p>
+        </div>
+    </div>
+
+    @if (Model.IsLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Analyzing sales data with Azure OpenAI...</p>
+        </div>
+    }
+    else if (Model.ErrorMessage != null)
+    {
+        <div class="alert alert-danger" role="alert">
+            <h4 class="alert-heading">Error</h4>
+            <p>@Model.ErrorMessage</p>
+            <hr>
+            <p class="mb-0">Please check your Azure OpenAI configuration in appsettings.json</p>
+        </div>
+    }
+    else if (Model.SalesData != null && Model.Insight != null)
+    {
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2">Total Orders</h6>
+                        <h3 class="card-title">@Model.SalesData.TotalOrders</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2">Total Revenue</h6>
+                        <h3 class="card-title">$@Model.SalesData.TotalRevenue.ToString("N2")</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2">Avg Order Value</h6>
+                        <h3 class="card-title">$@Model.SalesData.AverageOrderValue.ToString("N2")</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-dark">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2">Analysis Period</h6>
+                        <h3 class="card-title">@Model.DaysBack Days</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Insights -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-lightbulb"></i> AI-Generated Summary</h5>
+                        <small>Generated: @Model.Insight.GeneratedAt.ToString("MMM dd, yyyy HH:mm")</small>
+                    </div>
+                    <div class="card-body">
+                        <p class="lead">@Model.Insight.Summary</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-graph-up-arrow"></i> Trends & Patterns</h5>
+                    </div>
+                    <div class="card-body">
+                        <div style="white-space: pre-wrap;">@Model.Insight.Trends</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="bi bi-check-circle"></i> Recommendations</h5>
+                    </div>
+                    <div class="card-body">
+                        <div style="white-space: pre-wrap;">@Model.Insight.Recommendations</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Products -->
+        @if (Model.SalesData.TopProducts.Any())
+        {
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-star-fill"></i> Top Selling Products</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Product</th>
+                                            <th class="text-end">Units Sold</th>
+                                            <th class="text-end">Revenue</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var product in Model.SalesData.TopProducts)
+                                        {
+                                            <tr>
+                                                <td>@product.Name</td>
+                                                <td class="text-end">@product.QuantitySold</td>
+                                                <td class="text-end">$@product.Revenue.ToString("N2")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Daily Sales Trend -->
+        @if (Model.SalesData.DailySales.Any())
+        {
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-calendar3"></i> Recent Daily Sales</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th class="text-end">Orders</th>
+                                            <th class="text-end">Revenue</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var day in Model.SalesData.DailySales.TakeLast(10).Reverse())
+                                        {
+                                            <tr>
+                                                <td>@day.Date.ToString("MMM dd, yyyy")</td>
+                                                <td class="text-end">@day.OrderCount</td>
+                                                <td class="text-end">$@day.Revenue.ToString("N2")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Refresh Button -->
+        <div class="row">
+            <div class="col-md-12 text-center">
+                <form method="post">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh Insights
+                    </button>
+                </form>
+            </div>
+        </div>
+    }
+</div>
