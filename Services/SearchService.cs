@@ -89,7 +89,7 @@ namespace RetailMonolith.Services
                 {
                     await _indexClient!.DeleteIndexAsync(_searchConfig.IndexName, cancellationToken: ct);
                     _logger.LogInformation("Deleted existing index");
-                    await Task.Delay(2000, ct); // Wait for deletion to complete
+                    await WaitForIndexDeletionAsync(_searchConfig.IndexName, TimeSpan.FromSeconds(30), TimeSpan.FromMilliseconds(500), ct);
                 }
                 catch (Azure.RequestFailedException ex) when (ex.Status == 404)
                 {
