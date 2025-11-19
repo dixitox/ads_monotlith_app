@@ -16,13 +16,28 @@ public partial class ProgramEntry
         var builder = WebApplication.CreateBuilder(args);
 
 // DB � localdb for hack; swap to SQL in appsettings for Azure
-builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ??
-                   "Server=(localdb)\\MSSQLLocalDB;Database=RetailMonolith;Trusted_Connection=True;MultipleActiveResultSets=true"));
+// In test environments, the test will configure the DbContext separately
+if (!builder.Environment.EnvironmentName.Equals("Testing", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddDbContext<AppDbContext>(o =>
+        o.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ??
+                       "Server=(localdb)\\MSSQLLocalDB;Database=RetailMonolith;Trusted_Connection=True;MultipleActiveResultSets=true"));
+}
 
 
 // Add services to the container.
 builder.Services.AddRazorPages();
+
+// Conditionally disable antiforgery for Testing environment (E2E tests only)
+if (builder.Environment.EnvironmentName.Equals("Testing", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddAntiforgery(options => options.SuppressXFrameOptionsHeader = true);
+    builder.Services.Configure<Microsoft.AspNetCore.Mvc.RazorPages.RazorPagesOptions>(options =>
+    {
+        options.Conventions.ConfigureFilter(new Microsoft.AspNetCore.Mvc.IgnoreAntiforgeryTokenAttribute());
+    });
+}
+
 builder.Services.AddScoped<IPaymentGateway, MockPaymentGateway>();
 
 // Register HttpClient for CheckoutService proxy (Phase 3: Strangler Fig pattern)
@@ -38,11 +53,15 @@ builder.Services.AddHttpClient<ICheckoutService, CheckoutService>(client =>
         var app = builder.Build();
 
         // auto-migrate & seed (hack convenience)
-        using (var scope = app.Services.CreateScope())
+        // Skip migration in test environment to allow test-specific database configuration
+        if (!app.Environment.EnvironmentName.Equals("Testing", StringComparison.OrdinalIgnoreCase))
         {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            db.Database.Migrate();
-            AppDbContext.SeedAsync(db).GetAwaiter().GetResult();
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.Database.Migrate();
+                AppDbContext.SeedAsync(db).GetAwaiter().GetResult();
+            }
         }
 
         // Configure the HTTP request pipeline.
