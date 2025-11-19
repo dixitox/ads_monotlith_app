@@ -17,6 +17,7 @@ builder.Services.AddScoped<IPaymentGateway, MockPaymentGateway>();
 builder.Services.AddScoped<ICheckoutService, CheckoutService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
@@ -63,5 +64,39 @@ app.MapGet("/api/orders/{id:int}", async (int id, AppDbContext db) =>
     return order is null ? Results.NotFound() : Results.Ok(order);
 });
 
+// Chat API endpoint
+app.MapPost("/api/chat", async (IChatService chatService, ChatRequest request) =>
+{
+    try
+    {
+        if (string.IsNullOrWhiteSpace(request.Message))
+        {
+            return Results.BadRequest(new ChatResponse 
+            { 
+                Success = false, 
+                Error = "Message cannot be empty",
+                Message = string.Empty
+            });
+        }
+
+        var historyJson = System.Text.Json.JsonSerializer.Serialize(request.History);
+        var response = await chatService.GetChatResponseAsync(request.Message, historyJson);
+
+        return Results.Ok(new ChatResponse 
+        { 
+            Success = true, 
+            Message = response 
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new ChatResponse 
+        { 
+            Success = false, 
+            Error = ex.Message,
+            Message = "Sorry, I encountered an error. Please try again."
+        }, statusCode: 500);
+    }
+});
 
 app.Run();
