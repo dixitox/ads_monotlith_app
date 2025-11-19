@@ -365,7 +365,7 @@ namespace RetailMonolith.Services
         {
             var embeddingClient = _openAIClient.GetEmbeddingClient(_embeddingDeployment);
             var result = await embeddingClient.GenerateEmbeddingAsync(text, cancellationToken: ct);
-            return result.Value.Vector.ToArray();
+            return result.Value.ToFloats().ToArray();
         }
     }
 }
