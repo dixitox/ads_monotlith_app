@@ -67,22 +67,38 @@ az cognitiveservices account keys list \
 
 ### 3. Configure the Application
 
-Update `appsettings.json` with your Azure OpenAI credentials:
+**The application now reads credentials from environment variables instead of appsettings.json for security.**
 
-```json
-{
-  "AzureOpenAI": {
-    "Endpoint": "https://your-resource-name.openai.azure.com/",
-    "ApiKey": "your-api-key-here",
-    "DeploymentName": "gpt-4"
-  }
-}
+Set the following environment variables:
+
+**Linux/macOS:**
+```bash
+export AZURE_OPENAI_ENDPOINT="https://your-resource-name.openai.azure.com/"
+export AZURE_OPENAI_API_KEY="your-api-key-here"
 ```
 
-**For production**, use User Secrets or Azure Key Vault:
+**Windows (Command Prompt):**
+```cmd
+set AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
+set AZURE_OPENAI_API_KEY=your-api-key-here
+```
 
+**Windows (PowerShell):**
+```powershell
+$env:AZURE_OPENAI_ENDPOINT="https://your-resource-name.openai.azure.com/"
+$env:AZURE_OPENAI_API_KEY="your-api-key-here"
+```
+
+**For GitHub Codespaces:**
+Add `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_API_KEY` as repository secrets under Settings → Secrets and variables → Codespaces.
+
+**For local development with .env file:**
+1. Copy `.env.example` to `.env`
+2. Update the values in `.env` with your actual credentials
+3. The `.env` file is git-ignored to prevent accidental commits
+
+**Alternative: Using .NET User Secrets (for development):**
 ```bash
-# Using .NET User Secrets (for development)
 dotnet user-secrets init
 dotnet user-secrets set "AzureOpenAI:Endpoint" "https://your-resource-name.openai.azure.com/"
 dotnet user-secrets set "AzureOpenAI:ApiKey" "your-api-key-here"

@@ -7,6 +7,22 @@ using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Azure credentials from environment variables (GitHub secrets)
+// Environment variables override appsettings.json values
+var azureSearchEndpoint = Environment.GetEnvironmentVariable("AZURE_SEARCH_ENDPOINT");
+var azureSearchApiKey = Environment.GetEnvironmentVariable("AZURE_SEARCH_API_KEY");
+var azureOpenAIEndpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
+var azureOpenAIApiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
+
+if (!string.IsNullOrEmpty(azureSearchEndpoint))
+    builder.Configuration["AzureSearch:Endpoint"] = azureSearchEndpoint;
+if (!string.IsNullOrEmpty(azureSearchApiKey))
+    builder.Configuration["AzureSearch:ApiKey"] = azureSearchApiKey;
+if (!string.IsNullOrEmpty(azureOpenAIEndpoint))
+    builder.Configuration["AzureOpenAI:Endpoint"] = azureOpenAIEndpoint;
+if (!string.IsNullOrEmpty(azureOpenAIApiKey))
+    builder.Configuration["AzureOpenAI:ApiKey"] = azureOpenAIApiKey;
+
 // DB � localdb for hack; swap to SQL in appsettings for Azure
 builder.Services.AddDbContext<AppDbContext>(o =>
     o.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ??
@@ -28,7 +44,15 @@ builder.Services.Configure<AzureOpenAIConfiguration>(
 builder.Services.Configure<AzureSearchConfiguration>(
     builder.Configuration.GetSection("AzureSearch"));
 
-builder.Services.AddScoped<ISearchService, SearchService>();
+// Register SearchService with IOptions injection
+builder.Services.AddScoped<ISearchService>(sp =>
+{
+    var db = sp.GetRequiredService<AppDbContext>();
+    var logger = sp.GetRequiredService<ILogger<SearchService>>();
+    var openAIOptions = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AzureOpenAIConfiguration>>();
+    var searchOptions = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AzureSearchConfiguration>>();
+    return new SearchService(db, logger, openAIOptions.Value, searchOptions.Value);
+});
 
 var app = builder.Build();
 

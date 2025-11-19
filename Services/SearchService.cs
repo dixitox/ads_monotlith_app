@@ -17,10 +17,10 @@ namespace RetailMonolith.Services
         private readonly ILogger<SearchService> _logger;
         private readonly AzureOpenAIConfiguration _openAIConfig;
         private readonly AzureSearchConfiguration _searchConfig;
-        private readonly SearchIndexClient _indexClient;
-        private readonly SearchClient _searchClient;
-        private readonly AzureOpenAIClient _openAIClient;
-        private readonly EmbeddingClient _embeddingClient;
+        private SearchIndexClient? _indexClient;
+        private SearchClient? _searchClient;
+        private AzureOpenAIClient? _openAIClient;
+        private EmbeddingClient? _embeddingClient;
 
         public SearchService(
             AppDbContext db,
@@ -32,6 +32,38 @@ namespace RetailMonolith.Services
             _logger = logger;
             _openAIConfig = openAIConfig;
             _searchConfig = searchConfig;
+        }
+
+        private void EnsureClientsInitialized()
+        {
+            if (_indexClient != null && _openAIClient != null)
+                return;
+
+            // Validate Azure Search configuration
+            if (string.IsNullOrWhiteSpace(_searchConfig.Endpoint))
+            {
+                throw new InvalidOperationException(
+                    "Azure Search endpoint is not configured. Please set the AZURE_SEARCH_ENDPOINT environment variable.");
+            }
+
+            if (string.IsNullOrWhiteSpace(_searchConfig.ApiKey))
+            {
+                throw new InvalidOperationException(
+                    "Azure Search API key is not configured. Please set the AZURE_SEARCH_API_KEY environment variable.");
+            }
+
+            // Validate Azure OpenAI configuration
+            if (string.IsNullOrWhiteSpace(_openAIConfig.Endpoint))
+            {
+                throw new InvalidOperationException(
+                    "Azure OpenAI endpoint is not configured. Please set the AZURE_OPENAI_ENDPOINT environment variable.");
+            }
+
+            if (string.IsNullOrWhiteSpace(_openAIConfig.ApiKey))
+            {
+                throw new InvalidOperationException(
+                    "Azure OpenAI API key is not configured. Please set the AZURE_OPENAI_API_KEY environment variable.");
+            }
 
             // Initialize Azure Search clients
             var searchCredential = new AzureKeyCredential(_searchConfig.ApiKey);
@@ -46,6 +78,8 @@ namespace RetailMonolith.Services
 
         public async Task InitializeIndexAsync(CancellationToken ct = default)
         {
+            EnsureClientsInitialized();
+            
             try
             {
                 _logger.LogInformation("Initializing search index: {IndexName}", _searchConfig.IndexName);
@@ -65,7 +99,7 @@ namespace RetailMonolith.Services
                     VectorSearch = vectorSearch
                 };
 
-                await _indexClient.CreateOrUpdateIndexAsync(definition, cancellationToken: ct);
+                await _indexClient!.CreateOrUpdateIndexAsync(definition, cancellationToken: ct);
                 _logger.LogInformation("Search index initialized successfully");
             }
             catch (Exception ex)
@@ -77,6 +111,8 @@ namespace RetailMonolith.Services
 
         public async Task IndexProductsAsync(CancellationToken ct = default)
         {
+            EnsureClientsInitialized();
+            
             try
             {
                 _logger.LogInformation("Starting product indexing");
@@ -118,7 +154,7 @@ namespace RetailMonolith.Services
                 if (searchDocuments.Any())
                 {
                     var batch = IndexDocumentsBatch.Upload(searchDocuments);
-                    await _searchClient.IndexDocumentsAsync(batch, cancellationToken: ct);
+                    await _searchClient!.IndexDocumentsAsync(batch, cancellationToken: ct);
                     _logger.LogInformation("Successfully indexed {Count} products", searchDocuments.Count);
                 }
                 else
@@ -135,6 +171,8 @@ namespace RetailMonolith.Services
 
         public async Task<IEnumerable<Product>> SearchProductsAsync(string query, int maxResults = 10, CancellationToken ct = default)
         {
+            EnsureClientsInitialized();
+            
             try
             {
                 _logger.LogInformation("Searching for products with query: {Query}", query);
@@ -160,7 +198,7 @@ namespace RetailMonolith.Services
                 searchOptions.VectorSearch.Queries.Add(vectorQuery);
 
                 // Execute the search
-                var response = await _searchClient.SearchAsync<ProductSearchDocument>(query, searchOptions, ct);
+                var response = await _searchClient!.SearchAsync<ProductSearchDocument>(query, searchOptions, ct);
 
                 // Extract product IDs from search results
                 var productIds = new List<int>();
@@ -200,9 +238,11 @@ namespace RetailMonolith.Services
 
         private async Task<ReadOnlyMemory<float>> GenerateEmbeddingAsync(string text, CancellationToken ct = default)
         {
+            EnsureClientsInitialized();
+            
             try
             {
-                var response = await _embeddingClient.GenerateEmbeddingAsync(text, cancellationToken: ct);
+                var response = await _embeddingClient!.GenerateEmbeddingAsync(text, cancellationToken: ct);
                 return response.Value.ToFloats();
             }
             catch (Exception ex)

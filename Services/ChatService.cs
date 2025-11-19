@@ -13,17 +13,36 @@ namespace RetailMonolith.Services
         private readonly AppDbContext _db;
         private readonly IConfiguration _config;
         private readonly ILogger<ChatService> _logger;
-        private readonly AzureOpenAIClient _openAIClient;
-        private readonly ChatClient _chatClient;
+        private AzureOpenAIClient? _openAIClient;
+        private ChatClient? _chatClient;
 
         public ChatService(AppDbContext db, IConfiguration config, ILogger<ChatService> logger)
         {
             _db = db;
             _config = config;
             _logger = logger;
+        }
 
-            var endpoint = _config["AzureOpenAI:Endpoint"] ?? throw new InvalidOperationException("Azure OpenAI Endpoint not configured");
-            var apiKey = _config["AzureOpenAI:ApiKey"] ?? throw new InvalidOperationException("Azure OpenAI API Key not configured");
+        private void EnsureClientsInitialized()
+        {
+            if (_openAIClient != null && _chatClient != null)
+                return;
+
+            var endpoint = _config["AzureOpenAI:Endpoint"];
+            var apiKey = _config["AzureOpenAI:ApiKey"];
+
+            if (string.IsNullOrWhiteSpace(endpoint))
+            {
+                throw new InvalidOperationException(
+                    "Azure OpenAI endpoint is not configured. Please set the AZURE_OPENAI_ENDPOINT environment variable.");
+            }
+
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                throw new InvalidOperationException(
+                    "Azure OpenAI API key is not configured. Please set the AZURE_OPENAI_API_KEY environment variable.");
+            }
+
             var deploymentName = _config["AzureOpenAI:DeploymentName"] ?? "gpt-4";
 
             _openAIClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
@@ -84,6 +103,8 @@ namespace RetailMonolith.Services
         {
             try
             {
+                EnsureClientsInitialized();
+                
                 var systemPrompt = await BuildSystemPromptAsync(ct);
                 
                 var messages = new List<OpenAI.Chat.ChatMessage>
@@ -123,9 +144,14 @@ namespace RetailMonolith.Services
                     Temperature = float.TryParse(_config["AzureOpenAI:Temperature"], out var temp) ? temp : 0.7f
                 };
 
-                var response = await _chatClient.CompleteChatAsync(messages, chatOptions, ct);
+                var response = await _chatClient!.CompleteChatAsync(messages, chatOptions, ct);
 
                 return response.Value.Content[0].Text;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Azure OpenAI configuration error");
+                return "Sorry, I'm having trouble connecting. Please check your Azure OpenAI configuration and try again.";
             }
             catch (Exception ex)
             {

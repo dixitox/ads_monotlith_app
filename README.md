@@ -152,7 +152,77 @@ Access the app at `https://localhost:5001` or `http://localhost:5000`.
 
 ## Environment Variables (optional)
 You can override the default connection string by setting the `ConnectionStrings__DefaultConnection` environment variable.
-| Variable                               | Description                | Default          |
-| -------------------------------------- | -------------------------- | ---------------- |
-| `ConnectionStrings__DefaultConnection` | Database connection string | LocalDB instance |
-| `ASPNETCORE_ENVIRONMENT`               | Environment mode           | `Development`    |
+
+### Required Environment Variables for Azure Services
+
+The application uses Azure Cognitive Search and Azure OpenAI services. These credentials must be configured as environment variables for the application to function properly:
+
+| Variable                      | Description                                    | Required |
+| ----------------------------- | ---------------------------------------------- | -------- |
+| `AZURE_SEARCH_ENDPOINT`       | Azure Cognitive Search service endpoint        | Yes*     |
+| `AZURE_SEARCH_API_KEY`        | Azure Cognitive Search API key                 | Yes*     |
+| `AZURE_OPENAI_ENDPOINT`       | Azure OpenAI service endpoint                  | Yes*     |
+| `AZURE_OPENAI_API_KEY`        | Azure OpenAI service API key                   | Yes*     |
+| `ConnectionStrings__DefaultConnection` | Database connection string            | No       |
+| `ASPNETCORE_ENVIRONMENT`      | Environment mode                               | No       |
+
+\* Required only if you plan to use Azure Search or Azure OpenAI features (chat assistant, product search).
+
+### Setting Environment Variables
+
+#### For Local Development
+
+**Linux/macOS:**
+```bash
+export AZURE_SEARCH_ENDPOINT="https://your-search-service.search.windows.net"
+export AZURE_SEARCH_API_KEY="your-search-api-key"
+export AZURE_OPENAI_ENDPOINT="https://your-openai-service.openai.azure.com/"
+export AZURE_OPENAI_API_KEY="your-openai-api-key"
+```
+
+**Windows (Command Prompt):**
+```cmd
+set AZURE_SEARCH_ENDPOINT=https://your-search-service.search.windows.net
+set AZURE_SEARCH_API_KEY=your-search-api-key
+set AZURE_OPENAI_ENDPOINT=https://your-openai-service.openai.azure.com/
+set AZURE_OPENAI_API_KEY=your-openai-api-key
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:AZURE_SEARCH_ENDPOINT="https://your-search-service.search.windows.net"
+$env:AZURE_SEARCH_API_KEY="your-search-api-key"
+$env:AZURE_OPENAI_ENDPOINT="https://your-openai-service.openai.azure.com/"
+$env:AZURE_OPENAI_API_KEY="your-openai-api-key"
+```
+
+#### For GitHub Codespaces
+
+GitHub Codespaces automatically provides access to repository secrets as environment variables. To configure:
+
+1. Navigate to your repository on GitHub
+2. Go to **Settings** → **Secrets and variables** → **Codespaces** (not Actions!)
+3. Add the following secrets:
+   - `AZURE_SEARCH_ENDPOINT`
+   - `AZURE_SEARCH_API_KEY`
+   - `AZURE_OPENAI_ENDPOINT`
+   - `AZURE_OPENAI_API_KEY`
+
+**Important:** Make sure to add secrets under the **Codespaces** tab, not the **Actions** tab. Codespaces secrets are separate from Actions secrets.
+
+These secrets will be automatically available as environment variables when you create or restart a Codespace.
+
+#### For Docker/Dev Containers
+
+Create a `.env` file in the root directory (this file is git-ignored):
+
+```env
+AZURE_SEARCH_ENDPOINT=https://your-search-service.search.windows.net
+AZURE_SEARCH_API_KEY=your-search-api-key
+AZURE_OPENAI_ENDPOINT=https://your-openai-service.openai.azure.com/
+AZURE_OPENAI_API_KEY=your-openai-api-key
+```
+
+Then update `docker-compose.yml` or `.devcontainer/devcontainer.json` to load these variables.
+
+**Note:** Never commit the `.env` file or any files containing API keys to source control.
