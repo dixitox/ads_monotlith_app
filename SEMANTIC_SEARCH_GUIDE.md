@@ -266,8 +266,8 @@ namespace RetailMonolith.Services
         {
             // Define vector search configuration
             var vectorSearch = new VectorSearch();
-            vectorSearch.Profiles.Add(new VectorSearchProfile("my-vector-profile", "my-hnsw-config"));
-            vectorSearch.Algorithms.Add(new HnswAlgorithmConfiguration("my-hnsw-config"));
+            vectorSearch.Profiles.Add(new VectorSearchProfile("vector-profile", "hnsw-config"));
+            vectorSearch.Algorithms.Add(new HnswAlgorithmConfiguration("hnsw-config"));
 
             // Create index
             var index = new SearchIndex("products")
