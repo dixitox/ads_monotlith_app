@@ -1,12 +1,20 @@
 using Microsoft.EntityFrameworkCore;
 using RetailMonolith.Data;
 using RetailMonolith.Services;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(o =>
     o.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ??
                    "Server=(localdb)\\MSSQLLocalDB;Database=RetailMonolith;Trusted_Connection=True;MultipleActiveResultSets=true"));
+
+// Configure JSON serialization to handle circular references
+builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
+{
+    options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+});
 
 builder.Services.AddRazorPages();
 builder.Services.AddScoped<IPaymentGateway, MockPaymentGateway>();
@@ -15,6 +23,12 @@ builder.Services.AddScoped<ICartService, CartService>();
 
 // Register Cart API Client for decomposed Cart module
 builder.Services.AddHttpClient<RetailDecomposed.Services.ICartApiClient, RetailDecomposed.Services.CartApiClient>(client =>
+{
+    client.BaseAddress = new Uri("https://localhost:8108");
+});
+
+// Register Products API Client for decomposed Products module
+builder.Services.AddHttpClient<RetailDecomposed.Services.IProductsApiClient, RetailDecomposed.Services.ProductsApiClient>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:8108");
 });
@@ -53,6 +67,21 @@ app.MapPost("/api/cart/{customerId}/items", async (string customerId, int produc
 {
     await cart.AddToCartAsync(customerId, productId, quantity);
     return Results.Ok();
+});
+
+// Products API surface for decomposition
+app.MapGet("/api/products", async (AppDbContext db) =>
+{
+    var products = await db.Products.Where(p => p.IsActive).ToListAsync();
+    return Results.Ok(products);
+});
+
+app.MapGet("/api/products/{id}", async (int id, AppDbContext db) =>
+{
+    var product = await db.Products.FindAsync(id);
+    if (product is null)
+        return Results.NotFound();
+    return Results.Ok(product);
 });
 
 app.Run();

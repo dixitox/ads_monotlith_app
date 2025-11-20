@@ -11,11 +11,11 @@ namespace RetailMonolith.Pages.Products
 {
     public class IndexModel : PageModel
     {
-        private readonly AppDbContext _db;
+        private readonly IProductsApiClient _productsApiClient;
         private readonly ICartApiClient _cartApiClient;
-        public IndexModel(AppDbContext db, ICartApiClient cartApiClient)
+        public IndexModel(IProductsApiClient productsApiClient, ICartApiClient cartApiClient)
         {
-            _db = db;
+            _productsApiClient = productsApiClient;
             _cartApiClient = cartApiClient;
         }
 
@@ -42,14 +42,12 @@ namespace RetailMonolith.Pages.Products
             return "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=800&q=80";
         }
 
-        public async Task OnGetAsync() => Products = await _db.Products.Where(p => p.IsActive).ToListAsync();
+        // Decomposed: Products now come from the Products API instead of direct database access
+        public async Task OnGetAsync() => Products = await _productsApiClient.GetProductsAsync();
 
         public async Task OnPostAsync(int productId)
         {
             // Decomposed: Add to cart via Cart API instead of direct database access
-            var p = await _db.Products.FindAsync(productId);
-            if (p is null) return;
-
             await _cartApiClient.AddToCartAsync("guest", productId, quantity: 1);
             Response.Redirect("/Cart");
         }
