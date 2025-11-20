@@ -64,7 +64,8 @@ public class ProductsPageTests : IClassFixture<MonolithWebApplicationFactory>
         {
             ["productId"] = productId.ToString()
         };
-        var response = await _client.PostAsync("/Products", new FormUrlEncodedContent(formData));
+        using var content = new FormUrlEncodedContent(formData);
+        var response = await _client.PostAsync("/Products", content);
 
         // Assert - Should redirect after adding to cart
         Assert.True(response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Redirect);
