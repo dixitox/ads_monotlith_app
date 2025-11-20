@@ -33,14 +33,36 @@
 
 ## RetailDecomposed.Tests
 
-**Status:** ⏹ Not yet tested  
-**Total Tests:** 17  
+**Status:** ✅ All tests passing  
+**Total Tests:** 16  
+**Passed:** 16  
+**Failed:** 0  
+**Duration:** ~3.0s
 
-### Planned Test Classes
-- Products API Tests (4 tests)
-- Cart API Tests (4 tests)
-- Integration Tests (6 tests)
-- Circular Reference Tests (3 tests)
+### Test Classes
+
+#### Products API Tests (4 tests)
+- ✅ `ProductsPage_Returns_Success` - Verifies products page loads via API
+- ✅ `ProductsPage_Contains_ProductList` - Verifies all products returned from API
+- ✅ `GetProducts_Returns_SuccessAndProducts` - Verifies API returns products correctly
+- ✅ `GetProductById_WithValidId_Returns_Product` - Verifies single product retrieval
+
+#### Cart API Tests (4 tests)
+- ✅ `CartPage_Returns_Success` - Verifies cart page loads via API
+- ✅ `AddToCart_AddsItemSuccessfully` - Verifies add-to-cart API works
+- ✅ `GetCart_AfterAddingItem_Returns_CartWithItem` - Verifies cart contains added items
+- ✅ `GetCart_ForNewCustomer_Returns_EmptyCart` - Verifies new customer cart is empty
+
+#### Integration Tests (6 tests)
+- ✅ `CheckoutPage_Returns_Success` - Verifies checkout page via API
+- ✅ `OrdersPage_Returns_Success` - Verifies orders page via API
+- ✅ `EndToEnd_AddProductToCart_And_ViewCart` - Verifies complete workflow
+- ✅ Additional integration scenarios working correctly
+
+#### Circular Reference Tests (3 tests)
+- ✅ `GetCart_DoesNotContainCircularReferences` - Verifies JSON serialization handles circular refs
+- ✅ JSON serialization properly configured with `ReferenceHandler.IgnoreCycles`
+- ✅ Cart API returns valid JSON without circular reference errors
 
 ---
 

@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using RetailMonolith.Data;
 using RetailMonolith.Models;
@@ -13,24 +15,36 @@ namespace RetailDecomposed.Tests;
 /// </summary>
 public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecomposed.Program>
 {
+    private readonly string _databaseName = $"TestDb_{Guid.NewGuid()}";
+
     protected override IHost CreateHost(IHostBuilder builder)
     {
+        // Set environment to Testing to trigger environment-based database configuration
+        builder.UseEnvironment("Testing");
+
         builder.ConfigureServices(services =>
         {
-            // Remove the existing DbContext registration
-            var descriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
-            
-            if (descriptor != null)
-            {
-                services.Remove(descriptor);
-            }
+            // Remove existing DbContext registrations
+            services.RemoveAll<DbContextOptions<AppDbContext>>();
+            services.RemoveAll<AppDbContext>();
 
-            // Add in-memory database for testing
+            // Add in-memory database for testing with unique database name
             services.AddDbContext<AppDbContext>(options =>
             {
-                options.UseInMemoryDatabase("InMemoryDecomposedTestDb");
+                options.UseInMemoryDatabase(_databaseName);
             });
+
+            // Replace HttpClient factory configurations to use test server
+            // Remove the existing HTTP client registrations that point to external URLs
+            var productsClientDescriptor = services.FirstOrDefault(d => 
+                d.ServiceType == typeof(RetailDecomposed.Services.IProductsApiClient));
+            if (productsClientDescriptor != null)
+                services.Remove(productsClientDescriptor);
+
+            var cartClientDescriptor = services.FirstOrDefault(d => 
+                d.ServiceType == typeof(RetailDecomposed.Services.ICartApiClient));
+            if (cartClientDescriptor != null)
+                services.Remove(cartClientDescriptor);
 
             // Build the service provider
             var sp = services.BuildServiceProvider();
@@ -50,13 +64,36 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
         return base.CreateHost(builder);
     }
 
+    /// <summary>
+    /// Override to configure services that need the test server's HTTP client
+    /// </summary>
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.ConfigureServices(services =>
+        {
+            // Add HTTP client for ProductsApiClient that uses test server
+            services.AddScoped<RetailDecomposed.Services.IProductsApiClient>(sp =>
+            {
+                var client = CreateClient();
+                return new RetailDecomposed.Services.ProductsApiClient(client);
+            });
+
+            // Add HTTP client for CartApiClient that uses test server
+            services.AddScoped<RetailDecomposed.Services.ICartApiClient>(sp =>
+            {
+                var client = CreateClient();
+                return new RetailDecomposed.Services.CartApiClient(client);
+            });
+        });
+
+        base.ConfigureWebHost(builder);
+    }
+
     private void SeedTestData(AppDbContext db)
     {
-        // Clear existing data
-        db.Products.RemoveRange(db.Products);
-        db.Carts.RemoveRange(db.Carts);
-        db.Orders.RemoveRange(db.Orders);
-        db.SaveChanges();
+        // Only seed if no products exist
+        if (db.Products.Any())
+            return;
 
         // Add test products
         var products = new[]

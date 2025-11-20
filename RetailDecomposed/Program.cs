@@ -5,9 +5,18 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ??
-                   "Server=(localdb)\\MSSQLLocalDB;Database=RetailMonolith;Trusted_Connection=True;MultipleActiveResultSets=true"));
+// Use in-memory database for testing, SQL Server for production
+if (builder.Environment.EnvironmentName == "Testing")
+{
+    builder.Services.AddDbContext<AppDbContext>(o =>
+        o.UseInMemoryDatabase("TestDatabase"));
+}
+else
+{
+    builder.Services.AddDbContext<AppDbContext>(o =>
+        o.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ??
+                       "Server=(localdb)\\MSSQLLocalDB;Database=RetailMonolith;Trusted_Connection=True;MultipleActiveResultSets=true"));
+}
 
 // Configure JSON serialization to handle circular references
 builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
@@ -37,11 +46,15 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+// Skip migrations and seeding in test environment
+if (app.Environment.EnvironmentName != "Testing")
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
-    await AppDbContext.SeedAsync(db);
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.MigrateAsync();
+        await AppDbContext.SeedAsync(db);
+    }
 }
 
 if (!app.Environment.IsDevelopment())
