@@ -85,3 +85,9 @@ app.MapGet("/api/products/{id}", async (int id, AppDbContext db) =>
 });
 
 app.Run();
+
+// Make Program class accessible to test projects
+namespace RetailDecomposed
+{
+    public partial class Program { }
+}
