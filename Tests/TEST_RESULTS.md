@@ -122,5 +122,4 @@ dotnet test --verbosity detailed
 
 ---
 
-**Last Updated:** $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")  
-**Test Run Date:** $(Get-Date -Format "yyyy-MM-dd")
+**Note:** This document was created during the initial test suite implementation.
