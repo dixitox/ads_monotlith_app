@@ -118,6 +118,16 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
         };
 
         db.Products.AddRange(products);
+
+        // Add inventory items for the test products
+        var inventoryItems = new[]
+        {
+            new InventoryItem { Sku = "TEST-001", Quantity = 1000 },
+            new InventoryItem { Sku = "TEST-002", Quantity = 1000 },
+            new InventoryItem { Sku = "TEST-003", Quantity = 1000 }
+        };
+
+        db.Inventory.AddRange(inventoryItems);
         db.SaveChanges();
     }
 }
