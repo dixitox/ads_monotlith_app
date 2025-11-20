@@ -84,6 +84,20 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
                 var client = CreateClient();
                 return new RetailDecomposed.Services.CartApiClient(client);
             });
+
+            // Add HTTP client for OrdersApiClient that uses test server
+            services.AddScoped<RetailDecomposed.Services.IOrdersApiClient>(sp =>
+            {
+                var client = CreateClient();
+                return new RetailDecomposed.Services.OrdersApiClient(client);
+            });
+
+            // Add HTTP client for CheckoutApiClient that uses test server
+            services.AddScoped<RetailDecomposed.Services.ICheckoutApiClient>(sp =>
+            {
+                var client = CreateClient();
+                return new RetailDecomposed.Services.CheckoutApiClient(client);
+            });
         });
 
         base.ConfigureWebHost(builder);

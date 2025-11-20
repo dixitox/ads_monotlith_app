@@ -3,22 +3,21 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using RetailMonolith.Data;
 using RetailMonolith.Models;
+using RetailDecomposed.Services;
 
 namespace RetailMonolith.Pages.Orders
 {
     public class IndexModel : PageModel
     {
-        private readonly AppDbContext _db;
-        public IndexModel(AppDbContext db) => _db = db;
-
-        public List<Order> Orders { get; set; } = new();
-
-        public async Task OnGetAsync()
+        private readonly IOrdersApiClient _ordersApiClient;
+        public IndexModel(IOrdersApiClient ordersApiClient)
         {
-            Orders = await _db.Orders
-                .Include(o => o.Lines)
-                .OrderByDescending(o => o.CreatedUtc)
-                .ToListAsync();
+            _ordersApiClient = ordersApiClient;
         }
+
+        public IList<Order> Orders { get; set; } = new List<Order>();
+
+        // Decomposed: Orders now come from the Orders API instead of direct database access
+        public async Task OnGetAsync() => Orders = await _ordersApiClient.GetOrdersAsync();
     }
 }

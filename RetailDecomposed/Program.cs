@@ -42,6 +42,18 @@ builder.Services.AddHttpClient<RetailDecomposed.Services.IProductsApiClient, Ret
     client.BaseAddress = new Uri("https://localhost:8108");
 });
 
+// Register Orders API Client for decomposed Orders module
+builder.Services.AddHttpClient<RetailDecomposed.Services.IOrdersApiClient, RetailDecomposed.Services.OrdersApiClient>(client =>
+{
+    client.BaseAddress = new Uri("https://localhost:8108");
+});
+
+// Register Checkout API Client for decomposed Checkout module
+builder.Services.AddHttpClient<RetailDecomposed.Services.ICheckoutApiClient, RetailDecomposed.Services.CheckoutApiClient>(client =>
+{
+    client.BaseAddress = new Uri("https://localhost:8108");
+});
+
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
@@ -97,7 +109,44 @@ app.MapGet("/api/products/{id}", async (int id, AppDbContext db) =>
     return Results.Ok(product);
 });
 
+// Orders API surface for decomposition
+app.MapGet("/api/orders", async (AppDbContext db) =>
+{
+    var orders = await db.Orders
+        .Include(o => o.Lines)
+        .OrderByDescending(o => o.CreatedUtc)
+        .ToListAsync();
+    return Results.Ok(orders);
+});
+
+app.MapGet("/api/orders/{id}", async (int id, AppDbContext db) =>
+{
+    var order = await db.Orders
+        .Include(o => o.Lines)
+        .FirstOrDefaultAsync(o => o.Id == id);
+    if (order is null)
+        return Results.NotFound();
+    return Results.Ok(order);
+});
+
+// Checkout API surface for decomposition
+app.MapPost("/api/checkout", async (CheckoutRequest request, ICheckoutService checkoutService) =>
+{
+    try
+    {
+        var order = await checkoutService.CheckoutAsync(request.CustomerId, request.PaymentToken);
+        return Results.Ok(order);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
 app.Run();
+
+// DTOs for API endpoints
+record CheckoutRequest(string CustomerId, string PaymentToken);
 
 // Make Program class accessible to test projects
 namespace RetailDecomposed

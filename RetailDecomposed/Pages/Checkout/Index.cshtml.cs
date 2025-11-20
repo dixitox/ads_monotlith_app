@@ -9,12 +9,12 @@ namespace RetailMonolith.Pages.Checkout
     public class IndexModel : PageModel
     {
         private readonly ICartApiClient _cartApiClient;
-        private readonly ICheckoutService _checkoutService;
+        private readonly ICheckoutApiClient _checkoutApiClient;
         
-        public IndexModel(ICartApiClient cartApiClient, ICheckoutService checkoutService)
+        public IndexModel(ICartApiClient cartApiClient, ICheckoutApiClient checkoutApiClient)
         {
             _cartApiClient = cartApiClient;
-            _checkoutService = checkoutService;
+            _checkoutApiClient = checkoutApiClient;
         }
 
         // For simplicity, using a hardcoded customer ID
@@ -44,8 +44,8 @@ namespace RetailMonolith.Pages.Checkout
                 return Page();
             }
 
-            //perform checkout using MockPaymentGateway
-            var order = await _checkoutService.CheckoutAsync("guest", PaymentToken);
+            // Decomposed: Checkout via Checkout API instead of direct service call
+            var order = await _checkoutApiClient.CheckoutAsync("guest", PaymentToken);
 
             // redirect to order confirmation page
             return Redirect($"/Orders/Details?id={order.Id}");
