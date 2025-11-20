@@ -11,13 +11,16 @@
 
 Write-Host ""
 Write-Host ("=" * 80) -ForegroundColor Cyan
-Write-Host "  Starting both applications..." -ForegroundColor Cyan
+Write-Host "  Starting both applications (HTTP mode)..." -ForegroundColor Cyan
 Write-Host ("=" * 80) -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  RetailMonolith will run on: " -NoNewline
 Write-Host "http://localhost:5068" -ForegroundColor Green
 Write-Host "  RetailDecomposed will run on: " -NoNewline
 Write-Host "http://localhost:6068" -ForegroundColor Green
+Write-Host ""
+Write-Host "  Note: Applications use the default HTTP launch profiles." -ForegroundColor DarkGray
+Write-Host "  To use HTTPS, modify the script to specify --launch-profile https" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "  Press Ctrl+C to stop both applications" -ForegroundColor Yellow
 Write-Host ("=" * 80) -ForegroundColor DarkGray
