@@ -143,6 +143,38 @@ app.MapPost("/api/checkout", async (CheckoutRequest request, ICheckoutService ch
     }
 });
 
+// Display API endpoints banner
+var urls = app.Urls.FirstOrDefault() ?? "http://localhost:6068";
+Console.WriteLine("\n" + new string('=', 80));
+Console.ForegroundColor = ConsoleColor.Cyan;
+Console.WriteLine("  RETAIL DECOMPOSED - Microservices Architecture");
+Console.ResetColor();
+Console.WriteLine(new string('=', 80));
+Console.ForegroundColor = ConsoleColor.Green;
+Console.WriteLine($"\n  Application running at: {urls}\n");
+Console.ResetColor();
+Console.WriteLine("  Decomposed API Endpoints:");
+Console.ForegroundColor = ConsoleColor.Yellow;
+Console.WriteLine("  ┌─ Products API");
+Console.ResetColor();
+Console.WriteLine("  │  ├─ GET  /api/products        → List all active products");
+Console.WriteLine("  │  └─ GET  /api/products/{id}   → Get product by ID");
+Console.ForegroundColor = ConsoleColor.Yellow;
+Console.WriteLine("  ┌─ Cart API");
+Console.ResetColor();
+Console.WriteLine("  │  ├─ GET  /api/cart/{customerId}       → Get customer cart");
+Console.WriteLine("  │  └─ POST /api/cart/{customerId}/items → Add item to cart");
+Console.ForegroundColor = ConsoleColor.Yellow;
+Console.WriteLine("  ┌─ Orders API");
+Console.ResetColor();
+Console.WriteLine("  │  ├─ GET  /api/orders          → List all orders (desc)");
+Console.WriteLine("  │  └─ GET  /api/orders/{id}     → Get order by ID");
+Console.ForegroundColor = ConsoleColor.Yellow;
+Console.WriteLine("  ┌─ Checkout API");
+Console.ResetColor();
+Console.WriteLine("  │  └─ POST /api/checkout        → Process checkout");
+Console.WriteLine("\n" + new string('=', 80) + "\n");
+
 app.Run();
 
 // DTOs for API endpoints
