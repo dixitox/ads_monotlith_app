@@ -12,8 +12,21 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="9.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="RetailDecomposed\**\*.cs" />
+    <Content Remove="RetailDecomposed\**" />
+    <EmbeddedResource Remove="RetailDecomposed\**" />
+    <None Remove="RetailDecomposed\**" />
+    
+    <Compile Remove="Tests\**\*.cs" />
+    <Content Remove="Tests\**" />
+    <EmbeddedResource Remove="Tests\**" />
+    <None Remove="Tests\**" />
   </ItemGroup>
 
 </Project>

@@ -135,7 +135,15 @@ Start the application:
 dotnet run
 ```
 
-Access the app at `https://localhost:5001` or `http://localhost:5000`.
+Access the app at:
+- HTTP: `http://localhost:5068`
+- HTTPS: `https://localhost:7108`
+
+To specify a launch profile:
+```bash
+dotnet run --launch-profile http   # HTTP on port 5068
+dotnet run --launch-profile https  # HTTPS on port 7108
+```
 
 ### Available Endpoints
 

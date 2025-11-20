@@ -5,10 +5,19 @@ using RetailMonolith.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// DB — localdb for hack; swap to SQL in appsettings for Azure
-builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ??
-                   "Server=(localdb)\\MSSQLLocalDB;Database=RetailMonolith;Trusted_Connection=True;MultipleActiveResultSets=true"));
+// DB â€“ localdb for hack; swap to SQL in appsettings for Azure
+// Use InMemory database for testing environment
+if (builder.Environment.EnvironmentName == "Testing")
+{
+    builder.Services.AddDbContext<AppDbContext>(o =>
+        o.UseInMemoryDatabase("TestDatabase"));
+}
+else
+{
+    builder.Services.AddDbContext<AppDbContext>(o =>
+        o.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ??
+                       "Server=(localdb)\\MSSQLLocalDB;Database=RetailMonolith;Trusted_Connection=True;MultipleActiveResultSets=true"));
+}
 
 
 // Add services to the container.
@@ -20,12 +29,15 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-// auto-migrate & seed (hack convenience)
-using (var scope = app.Services.CreateScope())
+// auto-migrate & seed (hack convenience) - skip for testing environment
+if (app.Environment.EnvironmentName != "Testing")
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
-    await AppDbContext.SeedAsync(db); // seed the database
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.MigrateAsync();
+        await AppDbContext.SeedAsync(db); // seed the database
+    }
 }
 
 
@@ -47,7 +59,7 @@ app.UseAuthorization();
 app.MapRazorPages();
 
 
-// minimal APIs for the “decomp” path
+// minimal APIs for the ï¿½decompï¿½ path
 app.MapPost("/api/checkout", async (ICheckoutService svc) =>
 {
     var order = await svc.CheckoutAsync("guest", "tok_test");
@@ -64,3 +76,6 @@ app.MapGet("/api/orders/{id:int}", async (int id, AppDbContext db) =>
 
 
 app.Run();
+
+// Make Program class accessible to test projects
+public partial class Program { }
