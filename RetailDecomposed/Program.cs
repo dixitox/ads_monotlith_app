@@ -4,6 +4,7 @@ using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
 using RetailMonolith.Data;
 using RetailMonolith.Services;
+using System.Security.Claims;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -64,8 +65,14 @@ builder.Services.AddScoped<ICartService, CartService>();
 // Add support for propagating user tokens to downstream services
 builder.Services.AddHttpContextAccessor();
 
-// Helper method to create HttpMessageHandler with development certificate validation bypass
-static HttpMessageHandler CreateHttpMessageHandler(bool isDevelopment)
+// Register Cart API Client for decomposed Cart module
+// Note: Token propagation for API-to-API calls can be added later using custom DelegatingHandler
+builder.Services.AddHttpClient<RetailDecomposed.Services.ICartApiClient, RetailDecomposed.Services.CartApiClient>(client =>
+{
+    var cartApiBaseAddress = builder.Configuration["CartApi:BaseAddress"] ?? "https://localhost:6068";
+    client.BaseAddress = new Uri(cartApiBaseAddress);
+})
+.ConfigurePrimaryHttpMessageHandler(() =>
 {
     var handler = new HttpClientHandler();
     if (isDevelopment)
@@ -135,25 +142,46 @@ app.UseAuthorization();
 app.MapRazorPages();
 app.MapControllers(); // Enable MicrosoftIdentity area controllers
 
-// Cart API surface for decomposition
-app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart) =>
+// Helper method to validate that the authenticated user matches the requested customerId
+static bool IsAuthorizedForCustomer(HttpContext httpContext, string customerId)
 {
+    var authenticatedUserId = httpContext.User.Identity?.Name;
+    return !string.IsNullOrEmpty(authenticatedUserId) && authenticatedUserId == customerId;
+}
+
+// Cart API surface for decomposition
+app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart, ClaimsPrincipal user) =>
+{
+    // Validate that the authenticated user matches the customerId
+    var authenticatedUserId = user.Identity?.Name;
+    if (authenticatedUserId != customerId)
+    {
+        return Results.Forbid();
+    }
+    
     var cartData = await cart.GetCartWithLinesAsync(customerId);
     return Results.Ok(cartData);
-}).AllowAnonymous();
+}).RequireAuthorization("CustomerAccess");
 
-app.MapPost("/api/cart/{customerId}/items", async (string customerId, int productId, int quantity, ICartService cart) =>
+app.MapPost("/api/cart/{customerId}/items", async (string customerId, int productId, int quantity, ICartService cart, ClaimsPrincipal user) =>
 {
+    // Validate that the authenticated user matches the customerId
+    var authenticatedUserId = user.Identity?.Name;
+    if (authenticatedUserId != customerId)
+    {
+        return Results.Forbid();
+    }
+    
     await cart.AddToCartAsync(customerId, productId, quantity);
     return Results.Ok();
-}).AllowAnonymous();
+}).RequireAuthorization("CustomerAccess");
 
 // Products API surface for decomposition
 app.MapGet("/api/products", async (AppDbContext db) =>
 {
     var products = await db.Products.Where(p => p.IsActive).ToListAsync();
     return Results.Ok(products);
-}).AllowAnonymous();
+}).RequireAuthorization("CustomerAccess");
 
 app.MapGet("/api/products/{id}", async (int id, AppDbContext db) =>
 {
@@ -161,7 +189,7 @@ app.MapGet("/api/products/{id}", async (int id, AppDbContext db) =>
     if (product is null)
         return Results.NotFound();
     return Results.Ok(product);
-}).AllowAnonymous();
+}).RequireAuthorization("CustomerAccess");
 
 // Orders API surface for decomposition
 app.MapGet("/api/orders", async (AppDbContext db) =>
@@ -181,7 +209,7 @@ app.MapGet("/api/orders/{id}", async (int id, AppDbContext db) =>
     if (order is null)
         return Results.NotFound();
     return Results.Ok(order);
-}).AllowAnonymous();
+}).RequireAuthorization("CustomerAccess");
 
 // Checkout API surface for decomposition
 app.MapPost("/api/checkout", async (CheckoutRequest request, ICheckoutService checkoutService) =>
@@ -195,7 +223,7 @@ app.MapPost("/api/checkout", async (CheckoutRequest request, ICheckoutService ch
     {
         return Results.BadRequest(new { error = ex.Message });
     }
-}).AllowAnonymous();
+}).RequireAuthorization("CustomerAccess");
 
 // Display API endpoints banner
 var urls = app.Urls.FirstOrDefault() ?? "http://localhost:6068";
