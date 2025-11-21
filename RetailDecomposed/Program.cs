@@ -75,62 +75,43 @@ builder.Services.AddHttpClient<RetailDecomposed.Services.ICartApiClient, RetailD
 .ConfigurePrimaryHttpMessageHandler(() =>
 {
     var handler = new HttpClientHandler();
-    if (builder.Environment.IsDevelopment())
+    if (isDevelopment)
     {
         // Allow untrusted certificates in development only
         handler.ServerCertificateCustomValidationCallback = 
             HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
     }
     return handler;
-});
+}
+
+// Register Cart API Client for decomposed Cart module
+// Note: Token propagation for API-to-API calls can be added later using custom DelegatingHandler
+builder.Services.AddHttpClient<RetailDecomposed.Services.ICartApiClient, RetailDecomposed.Services.CartApiClient>(client =>
+{
+    client.BaseAddress = new Uri("https://localhost:6068");
+})
+.ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
 
 // Register Products API Client for decomposed Products module
 builder.Services.AddHttpClient<RetailDecomposed.Services.IProductsApiClient, RetailDecomposed.Services.ProductsApiClient>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:6068");
 })
-.ConfigurePrimaryHttpMessageHandler(() =>
-{
-    var handler = new HttpClientHandler();
-    if (builder.Environment.IsDevelopment())
-    {
-        handler.ServerCertificateCustomValidationCallback = 
-            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-    }
-    return handler;
-});
+.ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
 
 // Register Orders API Client for decomposed Orders module
 builder.Services.AddHttpClient<RetailDecomposed.Services.IOrdersApiClient, RetailDecomposed.Services.OrdersApiClient>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:6068");
 })
-.ConfigurePrimaryHttpMessageHandler(() =>
-{
-    var handler = new HttpClientHandler();
-    if (builder.Environment.IsDevelopment())
-    {
-        handler.ServerCertificateCustomValidationCallback = 
-            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-    }
-    return handler;
-});
+.ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
 
 // Register Checkout API Client for decomposed Checkout module
 builder.Services.AddHttpClient<RetailDecomposed.Services.ICheckoutApiClient, RetailDecomposed.Services.CheckoutApiClient>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:6068");
 })
-.ConfigurePrimaryHttpMessageHandler(() =>
-{
-    var handler = new HttpClientHandler();
-    if (builder.Environment.IsDevelopment())
-    {
-        handler.ServerCertificateCustomValidationCallback = 
-            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-    }
-    return handler;
-});
+.ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
 
 builder.Services.AddHealthChecks();
 
