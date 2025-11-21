@@ -200,7 +200,7 @@ app.MapGet("/api/products", async (AppDbContext db) =>
 {
     var products = await db.Products.Where(p => p.IsActive).ToListAsync();
     return Results.Ok(products);
-}).AllowAnonymous();
+}).RequireAuthorization("CustomerAccess");
 
 app.MapGet("/api/products/{id}", async (int id, AppDbContext db) =>
 {
@@ -208,7 +208,7 @@ app.MapGet("/api/products/{id}", async (int id, AppDbContext db) =>
     if (product is null)
         return Results.NotFound();
     return Results.Ok(product);
-}).AllowAnonymous();
+}).RequireAuthorization("CustomerAccess");
 
 // Orders API surface for decomposition
 app.MapGet("/api/orders", async (AppDbContext db) =>
@@ -228,7 +228,7 @@ app.MapGet("/api/orders/{id}", async (int id, AppDbContext db) =>
     if (order is null)
         return Results.NotFound();
     return Results.Ok(order);
-}).AllowAnonymous();
+}).RequireAuthorization("CustomerAccess");
 
 // Checkout API surface for decomposition
 app.MapPost("/api/checkout", async (CheckoutRequest request, ICheckoutService checkoutService) =>
@@ -242,7 +242,7 @@ app.MapPost("/api/checkout", async (CheckoutRequest request, ICheckoutService ch
     {
         return Results.BadRequest(new { error = ex.Message });
     }
-}).AllowAnonymous();
+}).RequireAuthorization("CustomerAccess");
 
 // Display API endpoints banner
 var urls = app.Urls.FirstOrDefault() ?? "http://localhost:6068";

@@ -20,8 +20,11 @@ public class ProductsApiTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task GetProducts_Returns_SuccessAndProducts()
     {
+        // Arrange
+        var client = _client.AuthenticateAsCustomer();
+
         // Act
-        var response = await _client.GetAsync("/api/products");
+        var response = await client.GetAsync("/api/products");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -33,8 +36,11 @@ public class ProductsApiTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task GetProducts_Returns_ExpectedProducts()
     {
+        // Arrange
+        var client = _client.AuthenticateAsCustomer();
+
         // Act
-        var response = await _client.GetAsync("/api/products");
+        var response = await client.GetAsync("/api/products");
         var products = await response.Content.ReadFromJsonAsync<List<ProductDto>>();
 
         // Assert
@@ -47,8 +53,11 @@ public class ProductsApiTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task GetProductById_WithValidId_Returns_Product()
     {
+        // Arrange
+        var client = _client.AuthenticateAsCustomer();
+
         // Act
-        var response = await _client.GetAsync("/api/products/1");
+        var response = await client.GetAsync("/api/products/1");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -61,8 +70,11 @@ public class ProductsApiTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task GetProductById_WithInvalidId_Returns_NotFound()
     {
+        // Arrange
+        var client = _client.AuthenticateAsCustomer();
+
         // Act
-        var response = await _client.GetAsync("/api/products/999");
+        var response = await client.GetAsync("/api/products/999");
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
