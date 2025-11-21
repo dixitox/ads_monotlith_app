@@ -195,7 +195,7 @@ app.MapGet("/api/orders", async (AppDbContext db) =>
         .OrderByDescending(o => o.CreatedUtc)
         .ToListAsync();
     return Results.Ok(orders);
-}).AllowAnonymous();
+}).RequireAuthorization("AdminOnly");
 
 app.MapGet("/api/orders/{id}", async (int id, AppDbContext db) =>
 {
