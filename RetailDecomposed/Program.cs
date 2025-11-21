@@ -4,6 +4,7 @@ using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
 using RetailMonolith.Data;
 using RetailMonolith.Services;
+using System.Security.Claims;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -68,7 +69,8 @@ builder.Services.AddHttpContextAccessor();
 // Note: Token propagation for API-to-API calls can be added later using custom DelegatingHandler
 builder.Services.AddHttpClient<RetailDecomposed.Services.ICartApiClient, RetailDecomposed.Services.CartApiClient>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:6068");
+    var cartApiBaseAddress = builder.Configuration["CartApi:BaseAddress"] ?? "https://localhost:6068";
+    client.BaseAddress = new Uri(cartApiBaseAddress);
 })
 .ConfigurePrimaryHttpMessageHandler(() =>
 {
@@ -159,15 +161,36 @@ app.UseAuthorization();
 app.MapRazorPages();
 app.MapControllers(); // Enable MicrosoftIdentity area controllers
 
-// Cart API surface for decomposition
-app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart) =>
+// Helper method to validate that the authenticated user matches the requested customerId
+static bool IsAuthorizedForCustomer(HttpContext httpContext, string customerId)
 {
+    var authenticatedUserId = httpContext.User.Identity?.Name;
+    return !string.IsNullOrEmpty(authenticatedUserId) && authenticatedUserId == customerId;
+}
+
+// Cart API surface for decomposition
+app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart, ClaimsPrincipal user) =>
+{
+    // Validate that the authenticated user matches the customerId
+    var authenticatedUserId = user.Identity?.Name;
+    if (authenticatedUserId != customerId)
+    {
+        return Results.Forbid();
+    }
+    
     var cartData = await cart.GetCartWithLinesAsync(customerId);
     return Results.Ok(cartData);
 }).RequireAuthorization("CustomerAccess");
 
-app.MapPost("/api/cart/{customerId}/items", async (string customerId, int productId, int quantity, ICartService cart) =>
+app.MapPost("/api/cart/{customerId}/items", async (string customerId, int productId, int quantity, ICartService cart, ClaimsPrincipal user) =>
 {
+    // Validate that the authenticated user matches the customerId
+    var authenticatedUserId = user.Identity?.Name;
+    if (authenticatedUserId != customerId)
+    {
+        return Results.Forbid();
+    }
+    
     await cart.AddToCartAsync(customerId, productId, quantity);
     return Results.Ok();
 }).RequireAuthorization("CustomerAccess");
