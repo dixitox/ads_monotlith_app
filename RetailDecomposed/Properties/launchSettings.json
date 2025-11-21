@@ -9,20 +9,11 @@
     }
   },
   "profiles": {
-    "RetailDecomposed-https": {
+    "RetailDecomposed": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
-      "applicationUrl": "https://localhost:6068",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      }
-    },
-    "RetailDecomposed-http": {
-      "commandName": "Project",
-      "dotnetRunMessages": true,
-      "launchBrowser": true,
-      "applicationUrl": "http://localhost:6068",
+      "applicationUrl": "https://localhost:6068;http://localhost:6067",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
