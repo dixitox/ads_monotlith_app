@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Web;
+using Microsoft.Identity.Web.UI;
 using RetailMonolith.Data;
 using RetailMonolith.Services;
 using System.Text.Json.Serialization;
@@ -25,33 +28,106 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =
     options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 });
 
-builder.Services.AddRazorPages();
+// Add Microsoft Entra ID authentication
+builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApp(options =>
+    {
+        builder.Configuration.Bind("AzureAd", options);
+        options.SignedOutRedirectUri = "/";
+    });
+
+// Add authorization policies
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy =>
+        policy.RequireRole("Admin"));
+    options.AddPolicy("CustomerAccess", policy =>
+        policy.RequireAuthenticatedUser());
+});
+
+builder.Services.AddRazorPages()
+    .AddMicrosoftIdentityUI();
+
+// Add controllers for MicrosoftIdentity UI
+builder.Services.AddControllers();
+
+// Add antiforgery services
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-CSRF-TOKEN";
+});
+
 builder.Services.AddScoped<IPaymentGateway, MockPaymentGateway>();
 builder.Services.AddScoped<ICheckoutService, CheckoutService>();
 builder.Services.AddScoped<ICartService, CartService>();
 
+// Add support for propagating user tokens to downstream services
+builder.Services.AddHttpContextAccessor();
+
 // Register Cart API Client for decomposed Cart module
+// Note: Token propagation for API-to-API calls can be added later using custom DelegatingHandler
 builder.Services.AddHttpClient<RetailDecomposed.Services.ICartApiClient, RetailDecomposed.Services.CartApiClient>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:8108");
+    client.BaseAddress = new Uri("https://localhost:6068");
+})
+.ConfigurePrimaryHttpMessageHandler(() =>
+{
+    var handler = new HttpClientHandler();
+    if (builder.Environment.IsDevelopment())
+    {
+        // Allow untrusted certificates in development only
+        handler.ServerCertificateCustomValidationCallback = 
+            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+    }
+    return handler;
 });
 
 // Register Products API Client for decomposed Products module
 builder.Services.AddHttpClient<RetailDecomposed.Services.IProductsApiClient, RetailDecomposed.Services.ProductsApiClient>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:8108");
+    client.BaseAddress = new Uri("https://localhost:6068");
+})
+.ConfigurePrimaryHttpMessageHandler(() =>
+{
+    var handler = new HttpClientHandler();
+    if (builder.Environment.IsDevelopment())
+    {
+        handler.ServerCertificateCustomValidationCallback = 
+            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+    }
+    return handler;
 });
 
 // Register Orders API Client for decomposed Orders module
 builder.Services.AddHttpClient<RetailDecomposed.Services.IOrdersApiClient, RetailDecomposed.Services.OrdersApiClient>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:8108");
+    client.BaseAddress = new Uri("https://localhost:6068");
+})
+.ConfigurePrimaryHttpMessageHandler(() =>
+{
+    var handler = new HttpClientHandler();
+    if (builder.Environment.IsDevelopment())
+    {
+        handler.ServerCertificateCustomValidationCallback = 
+            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+    }
+    return handler;
 });
 
 // Register Checkout API Client for decomposed Checkout module
 builder.Services.AddHttpClient<RetailDecomposed.Services.ICheckoutApiClient, RetailDecomposed.Services.CheckoutApiClient>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:8108");
+    client.BaseAddress = new Uri("https://localhost:6068");
+})
+.ConfigurePrimaryHttpMessageHandler(() =>
+{
+    var handler = new HttpClientHandler();
+    if (builder.Environment.IsDevelopment())
+    {
+        handler.ServerCertificateCustomValidationCallback = 
+            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+    }
+    return handler;
 });
 
 builder.Services.AddHealthChecks();
@@ -78,28 +154,30 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapRazorPages();
+app.MapControllers(); // Enable MicrosoftIdentity area controllers
 
 // Cart API surface for decomposition
 app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart) =>
 {
     var cartData = await cart.GetCartWithLinesAsync(customerId);
     return Results.Ok(cartData);
-});
+}).AllowAnonymous();
 
 app.MapPost("/api/cart/{customerId}/items", async (string customerId, int productId, int quantity, ICartService cart) =>
 {
     await cart.AddToCartAsync(customerId, productId, quantity);
     return Results.Ok();
-});
+}).AllowAnonymous();
 
 // Products API surface for decomposition
 app.MapGet("/api/products", async (AppDbContext db) =>
 {
     var products = await db.Products.Where(p => p.IsActive).ToListAsync();
     return Results.Ok(products);
-});
+}).AllowAnonymous();
 
 app.MapGet("/api/products/{id}", async (int id, AppDbContext db) =>
 {
@@ -107,7 +185,7 @@ app.MapGet("/api/products/{id}", async (int id, AppDbContext db) =>
     if (product is null)
         return Results.NotFound();
     return Results.Ok(product);
-});
+}).AllowAnonymous();
 
 // Orders API surface for decomposition
 app.MapGet("/api/orders", async (AppDbContext db) =>
@@ -117,7 +195,7 @@ app.MapGet("/api/orders", async (AppDbContext db) =>
         .OrderByDescending(o => o.CreatedUtc)
         .ToListAsync();
     return Results.Ok(orders);
-});
+}).AllowAnonymous();
 
 app.MapGet("/api/orders/{id}", async (int id, AppDbContext db) =>
 {
@@ -127,7 +205,7 @@ app.MapGet("/api/orders/{id}", async (int id, AppDbContext db) =>
     if (order is null)
         return Results.NotFound();
     return Results.Ok(order);
-});
+}).AllowAnonymous();
 
 // Checkout API surface for decomposition
 app.MapPost("/api/checkout", async (CheckoutRequest request, ICheckoutService checkoutService) =>
@@ -141,7 +219,7 @@ app.MapPost("/api/checkout", async (CheckoutRequest request, ICheckoutService ch
     {
         return Results.BadRequest(new { error = ex.Message });
     }
-});
+}).AllowAnonymous();
 
 // Display API endpoints banner
 var urls = app.Urls.FirstOrDefault() ?? "http://localhost:6068";

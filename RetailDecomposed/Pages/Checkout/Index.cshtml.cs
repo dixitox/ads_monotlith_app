@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using RetailMonolith.Services;
@@ -6,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace RetailMonolith.Pages.Checkout
 {
+    [Authorize(Policy = "CustomerAccess")]
     public class IndexModel : PageModel
     {
         private readonly ICartApiClient _cartApiClient;

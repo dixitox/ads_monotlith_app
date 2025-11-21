@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +8,7 @@ using RetailDecomposed.Services;
 
 namespace RetailMonolith.Pages.Orders
 {
+    [Authorize(Policy = "AdminOnly")]
     public class IndexModel : PageModel
     {
         private readonly IOrdersApiClient _ordersApiClient;

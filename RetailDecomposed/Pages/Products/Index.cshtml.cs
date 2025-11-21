@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -9,6 +10,7 @@ using System.Threading.Tasks;
 
 namespace RetailMonolith.Pages.Products
 {
+    [Authorize(Policy = "CustomerAccess")]
     public class IndexModel : PageModel
     {
         private readonly IProductsApiClient _productsApiClient;
