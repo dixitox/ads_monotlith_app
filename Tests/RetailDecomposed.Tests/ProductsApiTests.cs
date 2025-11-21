@@ -71,8 +71,11 @@ public class ProductsApiTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task ProductsPage_Returns_Success()
     {
+        // Arrange - Authenticate as customer to access protected page
+        var client = _client.AuthenticateAsCustomer();
+
         // Act
-        var response = await _client.GetAsync("/Products");
+        var response = await client.GetAsync("/Products");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -82,8 +85,11 @@ public class ProductsApiTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task ProductsPage_Contains_ProductList()
     {
+        // Arrange - Authenticate as customer to access protected page
+        var client = _client.AuthenticateAsCustomer();
+
         // Act
-        var response = await _client.GetAsync("/Products");
+        var response = await client.GetAsync("/Products");
         var content = await response.Content.ReadAsStringAsync();
 
         // Assert

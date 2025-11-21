@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +25,11 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
 
         builder.ConfigureServices(services =>
         {
+            // Replace authentication with fake authentication for testing
+            services.AddAuthentication(FakeAuthenticationHandler.AuthenticationScheme)
+                .AddScheme<AuthenticationSchemeOptions, FakeAuthenticationHandler>(
+                    FakeAuthenticationHandler.AuthenticationScheme, options => { });
+
             // Remove existing DbContext registrations
             services.RemoveAll<DbContextOptions<AppDbContext>>();
             services.RemoveAll<AppDbContext>();
@@ -71,6 +77,13 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
     {
         builder.ConfigureServices(services =>
         {
+            // Disable antiforgery validation for testing
+            services.AddAntiforgery(options => options.SuppressXFrameOptionsHeader = true);
+            services.AddRazorPages().AddRazorPagesOptions(options =>
+            {
+                options.Conventions.ConfigureFilter(new Microsoft.AspNetCore.Mvc.IgnoreAntiforgeryTokenAttribute());
+            });
+
             // Add HTTP client for ProductsApiClient that uses test server
             services.AddScoped<RetailDecomposed.Services.IProductsApiClient>(sp =>
             {

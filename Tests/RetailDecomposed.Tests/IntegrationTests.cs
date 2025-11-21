@@ -30,8 +30,11 @@ public class IntegrationTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task CheckoutPage_Returns_Success()
     {
+        // Arrange - Authenticate as customer
+        var client = _client.AuthenticateAsCustomer();
+
         // Act
-        var response = await _client.GetAsync("/Checkout");
+        var response = await client.GetAsync("/Checkout");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -41,8 +44,11 @@ public class IntegrationTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task OrdersPage_Returns_Success()
     {
+        // Arrange - Authenticate as customer
+        var client = _client.AuthenticateAsCustomer();
+
         // Act
-        var response = await _client.GetAsync("/Orders");
+        var response = await client.GetAsync("/Orders");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -52,16 +58,19 @@ public class IntegrationTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task EndToEnd_AddProductToCart_And_ViewCart()
     {
-        // Arrange - Navigate to products page
-        var productsResponse = await _client.GetAsync("/Products");
+        // Arrange - Authenticate as customer
+        var client = _client.AuthenticateAsCustomer();
+
+        // Navigate to products page
+        var productsResponse = await client.GetAsync("/Products");
         productsResponse.EnsureSuccessStatusCode();
 
         // Act 1 - Add product to cart via API
-        var addToCartResponse = await _client.PostAsync("/api/cart/guest/items?productId=1&quantity=1", null);
+        var addToCartResponse = await client.PostAsync("/api/cart/testuser@example.com/items?productId=1&quantity=1", null);
         addToCartResponse.EnsureSuccessStatusCode();
 
         // Act 2 - View cart page
-        var cartResponse = await _client.GetAsync("/Cart");
+        var cartResponse = await client.GetAsync("/Cart");
         
         // Assert
         cartResponse.EnsureSuccessStatusCode();

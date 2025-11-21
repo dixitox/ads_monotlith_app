@@ -108,8 +108,11 @@ public class CartApiTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task CartPage_Returns_Success()
     {
+        // Arrange - Authenticate as customer
+        var client = _client.AuthenticateAsCustomer();
+
         // Act
-        var response = await _client.GetAsync("/Cart");
+        var response = await client.GetAsync("/Cart");
 
         // Assert
         response.EnsureSuccessStatusCode();
