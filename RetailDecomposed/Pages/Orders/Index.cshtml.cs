@@ -8,7 +8,7 @@ using RetailDecomposed.Services;
 
 namespace RetailMonolith.Pages.Orders
 {
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "CustomerAccess")]
     public class IndexModel : PageModel
     {
         private readonly IOrdersApiClient _ordersApiClient;
@@ -18,8 +18,24 @@ namespace RetailMonolith.Pages.Orders
         }
 
         public IList<Order> Orders { get; set; } = new List<Order>();
+        public bool IsAdmin { get; set; }
 
         // Decomposed: Orders now come from the Orders API instead of direct database access
-        public async Task OnGetAsync() => Orders = await _ordersApiClient.GetOrdersAsync();
+        public async Task OnGetAsync()
+        {
+            IsAdmin = User.IsInRole("Admin");
+            var allOrders = await _ordersApiClient.GetOrdersAsync();
+            
+            // Admins see all orders, regular users see only their own
+            if (IsAdmin)
+            {
+                Orders = allOrders;
+            }
+            else
+            {
+                var customerId = User.Identity?.Name ?? "guest";
+                Orders = allOrders.Where(o => o.CustomerId == customerId).ToList();
+            }
+        }
     }
 }

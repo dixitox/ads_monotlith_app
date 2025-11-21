@@ -50,7 +50,9 @@ namespace RetailMonolith.Pages.Products
         public async Task OnPostAsync(int productId)
         {
             // Decomposed: Add to cart via Cart API instead of direct database access
-            await _cartApiClient.AddToCartAsync("guest", productId, quantity: 1);
+            // Use authenticated user's identity as customerId
+            var customerId = User.Identity?.Name ?? "guest";
+            await _cartApiClient.AddToCartAsync(customerId, productId, quantity: 1);
             Response.Redirect("/Cart");
         }
     }

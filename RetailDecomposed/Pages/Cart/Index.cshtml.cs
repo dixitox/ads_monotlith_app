@@ -23,7 +23,9 @@ namespace RetailMonolith.Pages.Cart
         public async Task OnGetAsync()
         {
             // Call the Cart API instead of using ICartService directly
-            var cart = await _cartApiClient.GetCartAsync("guest");
+            // Use authenticated user's identity as customerId
+            var customerId = User.Identity?.Name ?? "guest";
+            var cart = await _cartApiClient.GetCartAsync(customerId);
             Lines = cart.Lines
                 .Select(line => (line.Name, line.Quantity, line.UnitPrice))
                 .ToList();
