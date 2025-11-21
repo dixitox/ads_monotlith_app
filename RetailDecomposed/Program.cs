@@ -68,7 +68,8 @@ builder.Services.AddHttpContextAccessor();
 // Note: Token propagation for API-to-API calls can be added later using custom DelegatingHandler
 builder.Services.AddHttpClient<RetailDecomposed.Services.ICartApiClient, RetailDecomposed.Services.CartApiClient>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:6068");
+    var cartApiBaseAddress = builder.Configuration["CartApi:BaseAddress"] ?? "https://localhost:6068";
+    client.BaseAddress = new Uri(cartApiBaseAddress);
 })
 .ConfigurePrimaryHttpMessageHandler(() =>
 {
