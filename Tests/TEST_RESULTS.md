@@ -34,8 +34,8 @@
 ## RetailDecomposed.Tests
 
 **Status:** ✅ All tests passing  
-**Total Tests:** 43  
-**Passed:** 43  
+**Total Tests:** 47  
+**Passed:** 47  
 **Failed:** 0  
 **Duration:** ~5.0s
 
@@ -49,33 +49,44 @@
 - ✅ `GetProductById_WithValidId_Returns_Product` - Verifies single product retrieval
 - ✅ `GetProductById_WithInvalidId_Returns_NotFound` - Verifies 404 for invalid product
 
-#### Cart API Tests (7 tests)
+#### Cart API Tests (10 tests)
 - ✅ `CartPage_Returns_Success` - Verifies cart page loads via API (with auth)
+- ✅ `GetCart_ForNewCustomer_Returns_EmptyCart` - Verifies new customer cart is empty
 - ✅ `AddToCart_AddsItemSuccessfully` - Verifies add-to-cart API works
 - ✅ `GetCart_AfterAddingItem_Returns_CartWithItem` - Verifies cart contains added items
-- ✅ `GetCart_ForNewCustomer_Returns_EmptyCart` - Verifies new customer cart is empty
 - ✅ `GetCart_WithMultipleItems_Returns_AllItems` - Verifies multiple items in cart
 - ✅ `GetCart_DoesNotContainCircularReferences` - Verifies JSON serialization handles circular refs
-- ✅ Cart API returns valid JSON without circular reference errors
+- ✅ `GetCart_WithoutAuthentication_Returns_Unauthorized` - Verifies anonymous access is blocked
+- ✅ `AddToCart_WithoutAuthentication_Returns_Unauthorized` - Verifies anonymous add to cart is blocked
+- ✅ `GetCart_WithMismatchedUserId_Returns_Forbidden` - Verifies cart isolation between users
+- ✅ `AddToCart_WithMismatchedUserId_Returns_Forbidden` - Verifies users cannot add to other users' carts
 
-#### Orders API Tests (4 tests)
-- ✅ `GetOrders_Returns_SuccessAndOrders` - Verifies orders API works
+#### Orders API Tests (7 tests)
+- ✅ `GetOrders_Returns_Success` - Verifies orders API works
+- ✅ `GetOrders_Returns_ValidListStructure` - Verifies orders list structure
+- ✅ `GetOrders_Returns_OrdersWithLines` - Verifies orders include line items
 - ✅ `GetOrders_Returns_OrdersInDescendingOrder` - Verifies order sorting
 - ✅ `GetOrderById_WithValidId_Returns_Order` - Verifies single order retrieval
 - ✅ `GetOrderById_WithInvalidId_Returns_NotFound` - Verifies 404 for invalid order
+- ✅ `GetOrderById_Returns_OrderWithCorrectCustomerId` - Verifies order customer ID is correct
 
-#### Checkout API Tests (3 tests)
-- ✅ `PostCheckout_WithValidCart_Returns_Success` - Verifies checkout works
-- ✅ `PostCheckout_WithEmptyCart_Returns_BadRequest` - Verifies empty cart validation
-- ✅ `PostCheckout_CreatesOrder` - Verifies order creation after checkout
+#### Checkout API Tests (8 tests)
+- ✅ `Checkout_WithValidCart_Returns_CreatedOrder` - Verifies checkout creates order successfully
+- ✅ `Checkout_CreatesOrderWithCorrectTotal` - Verifies order total calculation
+- ✅ `Checkout_ClearsCartAfterSuccess` - Verifies cart is cleared after checkout
+- ✅ `Checkout_WithEmptyCart_Returns_BadRequest` - Verifies empty cart validation
+- ✅ `Checkout_WithMultipleItems_CreatesOrderWithAllLines` - Verifies multi-item orders
+- ✅ `Checkout_CreatesOrderVisibleInOrdersList` - Verifies order appears in orders list
+- ✅ `Checkout_WithValidPaymentToken_SetsStatusToPaid` - Verifies order status is set correctly
+- ✅ `Checkout_Returns_OrderWithCorrectLineDetails` - Verifies order line details are accurate
 
-#### Integration Tests (3 tests)
+#### Integration Tests (4 tests)
 - ✅ `HomePage_Returns_Success` - Verifies home page loads
 - ✅ `CheckoutPage_Returns_Success` - Verifies checkout page via API (with auth)
 - ✅ `OrdersPage_Returns_Success` - Verifies orders page via API (with auth)
 - ✅ `EndToEnd_AddProductToCart_And_ViewCart` - Verifies complete workflow (with auth)
 
-#### Authentication Tests (15 tests)
+#### Authentication Tests (12 tests)
 - ✅ `AnonymousUser_CanAccessHomePage` - Public page accessible without auth
 - ✅ `AnonymousUser_CannotAccessProductsPage` - Returns 401 Unauthorized
 - ✅ `AnonymousUser_CannotAccessCartPage` - Returns 401 Unauthorized

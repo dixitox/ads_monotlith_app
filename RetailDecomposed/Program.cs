@@ -144,11 +144,10 @@ static bool IsAuthorizedForCustomer(HttpContext httpContext, string customerId)
 }
 
 // Cart API surface for decomposition
-app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart, ClaimsPrincipal user) =>
+app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart, HttpContext httpContext) =>
 {
-    // Validate that the authenticated user matches the customerId
-    var authenticatedUserId = user.Identity?.Name;
-    if (authenticatedUserId != customerId)
+    // Validate that the authenticated user matches the customerId using helper method
+    if (!IsAuthorizedForCustomer(httpContext, customerId))
     {
         return Results.Forbid();
     }
@@ -157,11 +156,10 @@ app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart
     return Results.Ok(cartData);
 }).RequireAuthorization("CustomerAccess");
 
-app.MapPost("/api/cart/{customerId}/items", async (string customerId, int productId, int quantity, ICartService cart, ClaimsPrincipal user) =>
+app.MapPost("/api/cart/{customerId}/items", async (string customerId, int productId, int quantity, ICartService cart, HttpContext httpContext) =>
 {
-    // Validate that the authenticated user matches the customerId
-    var authenticatedUserId = user.Identity?.Name;
-    if (authenticatedUserId != customerId)
+    // Validate that the authenticated user matches the customerId using helper method
+    if (!IsAuthorizedForCustomer(httpContext, customerId))
     {
         return Results.Forbid();
     }

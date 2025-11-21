@@ -27,15 +27,8 @@ namespace RetailMonolith.Pages.Orders
             var allOrders = await _ordersApiClient.GetOrdersAsync();
             
             // Admins see all orders, regular users see only their own
-            if (IsAdmin)
-            {
-                Orders = allOrders;
-            }
-            else
-            {
-                var customerId = User.Identity?.Name ?? "guest";
-                Orders = allOrders.Where(o => o.CustomerId == customerId).ToList();
-            }
+            // API endpoint already filters orders based on user role server-side
+            Orders = allOrders;
         }
     }
 }

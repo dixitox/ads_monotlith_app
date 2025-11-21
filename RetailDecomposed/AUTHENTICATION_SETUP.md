@@ -223,7 +223,7 @@ All API endpoints are now protected with authentication:
 | `/api/cart/{customerId}/items` | POST | CustomerAccess |
 | `/api/products` | GET | CustomerAccess |
 | `/api/products/{id}` | GET | CustomerAccess |
-| `/api/orders` | GET | AdminOnly |
+| `/api/orders` | GET | CustomerAccess |
 | `/api/orders/{id}` | GET | CustomerAccess |
 | `/api/checkout` | POST | CustomerAccess |
 
