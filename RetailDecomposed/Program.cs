@@ -161,6 +161,13 @@ app.UseAuthorization();
 app.MapRazorPages();
 app.MapControllers(); // Enable MicrosoftIdentity area controllers
 
+// Helper method to validate that the authenticated user matches the requested customerId
+static bool IsAuthorizedForCustomer(HttpContext httpContext, string customerId)
+{
+    var authenticatedUserId = httpContext.User.Identity?.Name;
+    return !string.IsNullOrEmpty(authenticatedUserId) && authenticatedUserId == customerId;
+}
+
 // Cart API surface for decomposition
 app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart, ClaimsPrincipal user) =>
 {
