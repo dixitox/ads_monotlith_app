@@ -65,10 +65,10 @@ builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddHttpContextAccessor();
 
 // Helper method to create HttpMessageHandler with development certificate validation bypass
-HttpMessageHandler CreateHttpMessageHandler()
+static HttpMessageHandler CreateHttpMessageHandler(bool isDevelopment)
 {
     var handler = new HttpClientHandler();
-    if (builder.Environment.IsDevelopment())
+    if (isDevelopment)
     {
         // Allow untrusted certificates in development only
         handler.ServerCertificateCustomValidationCallback = 
@@ -83,28 +83,28 @@ builder.Services.AddHttpClient<RetailDecomposed.Services.ICartApiClient, RetailD
 {
     client.BaseAddress = new Uri("https://localhost:6068");
 })
-.ConfigurePrimaryHttpMessageHandler(CreateHttpMessageHandler);
+.ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
 
 // Register Products API Client for decomposed Products module
 builder.Services.AddHttpClient<RetailDecomposed.Services.IProductsApiClient, RetailDecomposed.Services.ProductsApiClient>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:6068");
 })
-.ConfigurePrimaryHttpMessageHandler(CreateHttpMessageHandler);
+.ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
 
 // Register Orders API Client for decomposed Orders module
 builder.Services.AddHttpClient<RetailDecomposed.Services.IOrdersApiClient, RetailDecomposed.Services.OrdersApiClient>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:6068");
 })
-.ConfigurePrimaryHttpMessageHandler(CreateHttpMessageHandler);
+.ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
 
 // Register Checkout API Client for decomposed Checkout module
 builder.Services.AddHttpClient<RetailDecomposed.Services.ICheckoutApiClient, RetailDecomposed.Services.CheckoutApiClient>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:6068");
 })
-.ConfigurePrimaryHttpMessageHandler(CreateHttpMessageHandler);
+.ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
 
 builder.Services.AddHealthChecks();
 
