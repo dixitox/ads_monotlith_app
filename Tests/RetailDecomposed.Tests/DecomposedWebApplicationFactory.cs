@@ -26,6 +26,7 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
         builder.ConfigureServices(services =>
         {
             // Replace authentication with fake authentication for testing
+            services.RemoveAll<IAuthenticationSchemeProvider>();
             services.AddAuthentication(FakeAuthenticationHandler.AuthenticationScheme)
                 .AddScheme<AuthenticationSchemeOptions, FakeAuthenticationHandler>(
                     FakeAuthenticationHandler.AuthenticationScheme, options => { });
