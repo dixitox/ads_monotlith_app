@@ -200,18 +200,18 @@ The application should start at `https://localhost:6068` (or the port specified 
 - **Products Page** (`/Products`): Requires authentication (CustomerAccess policy)
 - **Cart Page** (`/Cart`): Requires authentication (CustomerAccess policy)
 - **Checkout Page** (`/Checkout`): Requires authentication (CustomerAccess policy)
-- **Orders Page** (`/Orders`): Requires Admin role (AdminOnly policy)
+- **Orders Page** (`/Orders`): Requires authentication (CustomerAccess policy). Admin users see all orders; non-admin users see only their own orders.
 - **Order Details** (`/Orders/Details`): Requires authentication (CustomerAccess policy)
 
 **Testing Admin Access:**
 1. Sign in as a user with Admin role assigned
 2. Navigate to `/Orders/Index`
-3. You should see the orders list (only Admins can access this)
+3. You should see the orders list (all orders are visible to Admins)
 
 **Testing Customer Access:**
 1. Sign in as a user without Admin role
-2. Try to navigate to `/Orders/Index`
-3. You should receive an Access Denied error
+2. Navigate to `/Orders/Index`
+3. You should see only your own orders listed (non-admin users do not see other users' orders)
 
 ## Step 5: API Endpoints Security
 

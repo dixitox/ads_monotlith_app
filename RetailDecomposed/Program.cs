@@ -65,14 +65,8 @@ builder.Services.AddScoped<ICartService, CartService>();
 // Add support for propagating user tokens to downstream services
 builder.Services.AddHttpContextAccessor();
 
-// Register Cart API Client for decomposed Cart module
-// Note: Token propagation for API-to-API calls can be added later using custom DelegatingHandler
-builder.Services.AddHttpClient<RetailDecomposed.Services.ICartApiClient, RetailDecomposed.Services.CartApiClient>(client =>
-{
-    var cartApiBaseAddress = builder.Configuration["CartApi:BaseAddress"] ?? "https://localhost:6068";
-    client.BaseAddress = new Uri(cartApiBaseAddress);
-})
-.ConfigurePrimaryHttpMessageHandler(() =>
+// Helper method to create HttpMessageHandler with development certificate validation bypass
+static HttpMessageHandler CreateHttpMessageHandler(bool isDevelopment)
 {
     var handler = new HttpClientHandler();
     if (isDevelopment)
