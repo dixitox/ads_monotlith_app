@@ -186,14 +186,22 @@ app.MapGet("/api/products/{id}", async (int id, AppDbContext db) =>
 }).RequireAuthorization("CustomerAccess");
 
 // Orders API surface for decomposition
-app.MapGet("/api/orders", async (AppDbContext db) =>
+app.MapGet("/api/orders", async (AppDbContext db, ClaimsPrincipal user) =>
 {
-    var orders = await db.Orders
-        .Include(o => o.Lines)
-        .OrderByDescending(o => o.CreatedUtc)
-        .ToListAsync();
+    // If user is Admin, return all orders. Otherwise, return only their orders.
+    var userId = user.Identity?.Name;
+    var isAdmin = user.IsInRole("Admin");
+    
+    IQueryable<RetailMonolith.Models.Order> query = db.Orders.Include(o => o.Lines);
+    
+    if (!isAdmin && !string.IsNullOrEmpty(userId))
+    {
+        query = query.Where(o => o.CustomerId == userId);
+    }
+    
+    var orders = await query.OrderByDescending(o => o.CreatedUtc).ToListAsync();
     return Results.Ok(orders);
-}).RequireAuthorization("AdminOnly");
+}).RequireAuthorization("CustomerAccess");
 
 app.MapGet("/api/orders/{id}", async (int id, AppDbContext db) =>
 {

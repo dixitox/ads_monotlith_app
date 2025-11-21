@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>RetailDecomposed</RootNamespace>
     <AssemblyName>RetailDecomposed</AssemblyName>
+    <UserSecretsId>f75eacf7-7b8d-4050-b827-1fb97dd60cc5</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

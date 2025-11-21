@@ -38,7 +38,6 @@ public class CartApiTests : IClassFixture<DecomposedWebApplicationFactory>
     public async Task AddToCart_AddsItemSuccessfully()
     {
         // Arrange
-        var client = _client.AuthenticateAsCustomer();
         var customerId = "testcustomer2";
         var productId = 1;
         var quantity = 2;
@@ -57,7 +56,6 @@ public class CartApiTests : IClassFixture<DecomposedWebApplicationFactory>
     public async Task GetCart_AfterAddingItem_Returns_CartWithItem()
     {
         // Arrange
-        var client = _client.AuthenticateAsCustomer();
         var customerId = "testcustomer3";
         var client = _client.AuthenticateAs(customerId, customerId, customerId);
         await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=2", null);
@@ -78,7 +76,6 @@ public class CartApiTests : IClassFixture<DecomposedWebApplicationFactory>
     public async Task GetCart_WithMultipleItems_Returns_AllItems()
     {
         // Arrange
-        var client = _client.AuthenticateAsCustomer();
         var customerId = "testcustomer4";
         var client = _client.AuthenticateAs(customerId, customerId, customerId);
         await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
@@ -98,7 +95,6 @@ public class CartApiTests : IClassFixture<DecomposedWebApplicationFactory>
     public async Task GetCart_DoesNotContainCircularReferences()
     {
         // Arrange - Add an item to cart
-        var client = _client.AuthenticateAsCustomer();
         var customerId = "testcustomer5";
         var client = _client.AuthenticateAs(customerId, customerId, customerId);
         await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
