@@ -160,17 +160,31 @@ app.MapRazorPages();
 app.MapControllers(); // Enable MicrosoftIdentity area controllers
 
 // Cart API surface for decomposition
-app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart) =>
+app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart, HttpContext httpContext) =>
 {
+    // Validate that the authenticated user matches the customerId
+    var authenticatedUserId = httpContext.User.Identity?.Name;
+    if (string.IsNullOrEmpty(authenticatedUserId) || authenticatedUserId != customerId)
+    {
+        return Results.Forbid();
+    }
+    
     var cartData = await cart.GetCartWithLinesAsync(customerId);
     return Results.Ok(cartData);
-}).AllowAnonymous();
+}).RequireAuthorization();
 
-app.MapPost("/api/cart/{customerId}/items", async (string customerId, int productId, int quantity, ICartService cart) =>
+app.MapPost("/api/cart/{customerId}/items", async (string customerId, int productId, int quantity, ICartService cart, HttpContext httpContext) =>
 {
+    // Validate that the authenticated user matches the customerId
+    var authenticatedUserId = httpContext.User.Identity?.Name;
+    if (string.IsNullOrEmpty(authenticatedUserId) || authenticatedUserId != customerId)
+    {
+        return Results.Forbid();
+    }
+    
     await cart.AddToCartAsync(customerId, productId, quantity);
     return Results.Ok();
-}).AllowAnonymous();
+}).RequireAuthorization();
 
 // Products API surface for decomposition
 app.MapGet("/api/products", async (AppDbContext db) =>
