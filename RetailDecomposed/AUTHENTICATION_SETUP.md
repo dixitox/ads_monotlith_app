@@ -38,9 +38,11 @@ The RetailDecomposed application now includes:
 
 ### 1.3 Note Important Values
 After registration, note these values from the **Overview** page:
-- **Application (client) ID**: `cddeea42-e4cc-4986-994f-5b842a63e4b5`
-- **Directory (tenant) ID**: `714deb98-bf8b-47eb-8625-7fff26845f87`
-- **Directory (tenant) name**: `MngEnvMCAP802465.onmicrosoft.com`
+- **Application (client) ID**: `your-client-id-here`
+- **Directory (tenant) ID**: `your-tenant-id-here`
+- **Directory (tenant) name**: `your-tenant-name-here`
+
+**⚠️ Important**: Keep these values secure. You'll use them to configure your application in Step 3.
 
 ### 1.4 Configure Authentication Settings
 1. Go to **Authentication** in the left menu
@@ -98,40 +100,54 @@ If you need to call downstream APIs that require application permissions:
 
 ## Step 3: Configure Application Settings
 
-### 3.1 Update appsettings.json
-Update the `appsettings.json` file in the RetailDecomposed project with your Azure App Registration values:
+### 3.1 Configure Using User Secrets (Recommended for Local Development)
+
+**✅ This is the recommended approach** to keep your Azure AD credentials secure and out of source control.
+
+The appsettings.json files in the repository contain placeholder values. Instead of editing these files directly, use .NET User Secrets to store your actual credentials locally:
+
+1. **Initialize User Secrets** (if not already initialized):
+   ```powershell
+   cd RetailDecomposed
+   dotnet user-secrets init
+   ```
+
+2. **Set Your Azure AD Configuration**:
+   ```powershell
+   dotnet user-secrets set "AzureAd:ClientId" "your-client-id-here"
+   dotnet user-secrets set "AzureAd:TenantId" "your-tenant-id-here"
+   dotnet user-secrets set "AzureAd:Domain" "your-domain.onmicrosoft.com"
+   ```
+
+   Replace the values with your actual values from Step 1.3:
+   - `your-client-id-here` → Your Application (client) ID
+   - `your-tenant-id-here` → Your Directory (tenant) ID
+   - `your-domain.onmicrosoft.com` → Your Azure AD tenant domain
+
+3. **Verify Your Secrets** (optional):
+   ```powershell
+   dotnet user-secrets list
+   ```
+
+**How It Works:**
+- User Secrets are stored outside your project directory in a JSON file on your local machine
+- They override the placeholder values in appsettings.json at runtime
+- They are never checked into source control
+- Each developer can have their own secrets without conflicts
+
+### 3.2 Alternative: Update appsettings.Development.json (Not Recommended)
+
+If you prefer not to use User Secrets, you can update `appsettings.Development.json` directly. However, **make sure this file is in .gitignore** to prevent accidentally committing credentials.
+
+Update the development settings file with your values:
 
 ```json
 {
   "AzureAd": {
     "Instance": "https://login.microsoftonline.com/",
     "Domain": "your-domain.onmicrosoft.com",
-    "TenantId": "your-tenant-id",
-    "ClientId": "your-client-id",
-    "CallbackPath": "/signin-oidc",
-    "SignedOutCallbackPath": "/signout-callback-oidc"
-  },
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning",
-      "Microsoft.Identity": "Information"
-    }
-  },
-  "AllowedHosts": "*"
-}
-```
-
-### 3.2 Update appsettings.Development.json
-Update the development settings file with the same values:
-
-```json
-{
-  "AzureAd": {
-    "Instance": "https://login.microsoftonline.com/",
-    "Domain": "your-domain.onmicrosoft.com",
-    "TenantId": "your-tenant-id",
-    "ClientId": "your-client-id",
+    "TenantId": "your-tenant-id-here",
+    "ClientId": "your-client-id-here",
     "CallbackPath": "/signin-oidc",
     "SignedOutCallbackPath": "/signout-callback-oidc"
   },
@@ -149,10 +165,7 @@ Update the development settings file with the same values:
 }
 ```
 
-**Replace the following values:**
-- `your-domain.onmicrosoft.com` → Your Azure AD tenant domain
-- `your-tenant-id` → Your Directory (tenant) ID from Step 1.3
-- `your-client-id` → Your Application (client) ID from Step 1.3
+**⚠️ Security Note:** The `appsettings.json` file should always contain placeholder values only. Never commit real credentials to source control.
 
 ## Step 4: Run and Test the Application
 
@@ -239,13 +252,8 @@ dotnet dev-certs https --trust
 
 ## Security Best Practices
 
-1. **Never commit secrets**: Keep appsettings.json out of source control if it contains real credentials
-2. **Use User Secrets**: For local development, use .NET User Secrets:
-   ```powershell
-   dotnet user-secrets init
-   dotnet user-secrets set "AzureAd:ClientId" "your-client-id"
-   dotnet user-secrets set "AzureAd:TenantId" "your-tenant-id"
-   ```
+1. **Never commit secrets**: Always use placeholder values in appsettings.json files that are committed to source control
+2. **Use User Secrets**: For local development, use .NET User Secrets (see Step 3.1 above)
 3. **Production Configuration**: Use Azure Key Vault or Azure App Configuration for production
 4. **HTTPS Only**: Always use HTTPS in production
 5. **Role Validation**: Validate roles on both client and server sides
