@@ -1,0 +1,33 @@
+@using System.Security.Claims
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <ul class="navbar-nav">
+        <li class="nav-item">
+            <span class="navbar-text text-dark">
+                Hello, @User.Identity.Name!
+                @if (User.IsInRole("Admin"))
+                {
+                    <span class="badge bg-primary">Admin</span>
+                }
+            </span>
+        </li>
+        <li class="nav-item">
+            @if (User.HasClaim(c => c.Type == "http://schemas.microsoft.com/identity/claims/tenantid"))
+            {
+                <a class="nav-link text-dark" asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignOut" asp-route-scheme="OpenIdConnect">Sign out</a>
+            }
+            else
+            {
+                <a class="nav-link text-dark" asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignOut">Sign out</a>
+            }
+        </li>
+    </ul>
+}
+else
+{
+    <ul class="navbar-nav">
+        <li class="nav-item">
+            <a class="nav-link text-dark" asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignIn">Sign in</a>
+        </li>
+    </ul>
+}

@@ -1,0 +1,82 @@
+@page
+@model RetailMonolith.Pages.UserInfoModel
+@{
+    ViewData["Title"] = "User Information";
+}
+
+<div class="container mt-4">
+    <h2>User Information & Claims</h2>
+    
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Authentication Status</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Authenticated:</strong> <span class="badge bg-success">Yes</span></p>
+                <p><strong>Name:</strong> @User.Identity.Name</p>
+                <p><strong>Authentication Type:</strong> @User.Identity.AuthenticationType</p>
+                <p><strong>Is Admin:</strong> 
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <span class="badge bg-success">Yes</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">No</span>
+                    }
+                </p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">All Claims</h5>
+            </div>
+            <div class="card-body">
+                @if (User.Claims.Any())
+                {
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Claim Type</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var claim in User.Claims.OrderBy(c => c.Type))
+                            {
+                                <tr>
+                                    <td><code>@claim.Type</code></td>
+                                    <td>@claim.Value</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p class="text-muted">No claims found.</p>
+                }
+            </div>
+        </div>
+
+        <div class="alert alert-info mt-3">
+            <h6>Looking for the "Admin" role?</h6>
+            <p>Check the claims above for entries with type containing "role" or "roles".</p>
+            <p>If you don't see any role claims, you need to:</p>
+            <ol>
+                <li>Define app roles in your Azure AD app registration manifest</li>
+                <li>Assign users to those roles in Enterprise Applications</li>
+                <li>Ensure the "roles" claim is included in the token</li>
+            </ol>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">
+            <p>You are not authenticated. Please <a asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignIn">sign in</a> to view your user information.</p>
+        </div>
+    }
+</div>

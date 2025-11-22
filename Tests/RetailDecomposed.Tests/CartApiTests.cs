@@ -20,8 +20,11 @@ public class CartApiTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task GetCart_ForNewCustomer_Returns_EmptyCart()
     {
+        // Arrange
+        var client = _client.AuthenticateAs("testcustomer", "testcustomer", "testcustomer");
+        
         // Act
-        var response = await _client.GetAsync("/api/cart/testcustomer");
+        var response = await client.GetAsync("/api/cart/testcustomer");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -38,9 +41,10 @@ public class CartApiTests : IClassFixture<DecomposedWebApplicationFactory>
         var customerId = "testcustomer2";
         var productId = 1;
         var quantity = 2;
+        var client = _client.AuthenticateAs(customerId, customerId, customerId);
 
         // Act
-        var response = await _client.PostAsync(
+        var response = await client.PostAsync(
             $"/api/cart/{customerId}/items?productId={productId}&quantity={quantity}", 
             null);
 
@@ -53,10 +57,11 @@ public class CartApiTests : IClassFixture<DecomposedWebApplicationFactory>
     {
         // Arrange
         var customerId = "testcustomer3";
-        await _client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=2", null);
+        var client = _client.AuthenticateAs(customerId, customerId, customerId);
+        await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=2", null);
 
         // Act
-        var response = await _client.GetAsync($"/api/cart/{customerId}");
+        var response = await client.GetAsync($"/api/cart/{customerId}");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -72,11 +77,12 @@ public class CartApiTests : IClassFixture<DecomposedWebApplicationFactory>
     {
         // Arrange
         var customerId = "testcustomer4";
-        await _client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
-        await _client.PostAsync($"/api/cart/{customerId}/items?productId=2&quantity=3", null);
+        var client = _client.AuthenticateAs(customerId, customerId, customerId);
+        await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
+        await client.PostAsync($"/api/cart/{customerId}/items?productId=2&quantity=3", null);
 
         // Act
-        var response = await _client.GetAsync($"/api/cart/{customerId}");
+        var response = await client.GetAsync($"/api/cart/{customerId}");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -90,10 +96,11 @@ public class CartApiTests : IClassFixture<DecomposedWebApplicationFactory>
     {
         // Arrange - Add an item to cart
         var customerId = "testcustomer5";
-        await _client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
+        var client = _client.AuthenticateAs(customerId, customerId, customerId);
+        await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
 
         // Act - Get cart should not throw JsonException
-        var response = await _client.GetAsync($"/api/cart/{customerId}");
+        var response = await client.GetAsync($"/api/cart/{customerId}");
 
         // Assert - Successful deserialization means no circular reference issue
         response.EnsureSuccessStatusCode();
@@ -108,12 +115,67 @@ public class CartApiTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task CartPage_Returns_Success()
     {
+        // Arrange - Authenticate as customer
+        var client = _client.AuthenticateAsCustomer();
+
         // Act
-        var response = await _client.GetAsync("/Cart");
+        var response = await client.GetAsync("/Cart");
 
         // Assert
         response.EnsureSuccessStatusCode();
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetCart_WithoutAuthentication_Returns_Unauthorized()
+    {
+        // Arrange - Anonymous client
+        var client = _client;
+
+        // Act
+        var response = await client.GetAsync("/api/cart/testcustomer");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AddToCart_WithoutAuthentication_Returns_Unauthorized()
+    {
+        // Arrange - Anonymous client
+        var client = _client;
+
+        // Act
+        var response = await client.PostAsync("/api/cart/testcustomer/items?productId=1&quantity=1", null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetCart_WithMismatchedUserId_Returns_Forbidden()
+    {
+        // Arrange - Authenticate as one user, try to access another user's cart
+        var client = _client.AuthenticateAs("user1", "user1", "user1");
+
+        // Act
+        var response = await client.GetAsync("/api/cart/user2");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AddToCart_WithMismatchedUserId_Returns_Forbidden()
+    {
+        // Arrange - Authenticate as one user, try to add to another user's cart
+        var client = _client.AuthenticateAs("user1", "user1", "user1");
+
+        // Act
+        var response = await client.PostAsync("/api/cart/user2/items?productId=1&quantity=1", null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     // DTO classes for deserialization

@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -22,8 +24,29 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
         // Set environment to Testing to trigger environment-based database configuration
         builder.UseEnvironment("Testing");
 
+        // Configure Azure AD settings for tests so isAzureAdConfigured evaluates to true
+        builder.ConfigureAppConfiguration((context, config) =>
+        {
+            config.AddInMemoryCollection(new Dictionary<string, string>
+            {
+                ["AzureAd:TenantId"] = "00000000-0000-0000-0000-000000000001",
+                ["AzureAd:ClientId"] = "00000000-0000-0000-0000-000000000002",
+                ["AzureAd:Domain"] = "test.onmicrosoft.com",
+                ["AzureAd:Instance"] = "https://login.microsoftonline.com/"
+            });
+        });
+
         builder.ConfigureServices(services =>
         {
+            // Replace authentication with fake authentication for testing
+            services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = FakeAuthenticationHandler.AuthenticationScheme;
+                options.DefaultChallengeScheme = FakeAuthenticationHandler.AuthenticationScheme;
+            })
+            .AddScheme<AuthenticationSchemeOptions, FakeAuthenticationHandler>(
+                FakeAuthenticationHandler.AuthenticationScheme, options => { });
+
             // Remove existing DbContext registrations
             services.RemoveAll<DbContextOptions<AppDbContext>>();
             services.RemoveAll<AppDbContext>();
@@ -33,18 +56,6 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
             {
                 options.UseInMemoryDatabase(_databaseName);
             });
-
-            // Replace HttpClient factory configurations to use test server
-            // Remove the existing HTTP client registrations that point to external URLs
-            var productsClientDescriptor = services.FirstOrDefault(d => 
-                d.ServiceType == typeof(RetailDecomposed.Services.IProductsApiClient));
-            if (productsClientDescriptor != null)
-                services.Remove(productsClientDescriptor);
-
-            var cartClientDescriptor = services.FirstOrDefault(d => 
-                d.ServiceType == typeof(RetailDecomposed.Services.ICartApiClient));
-            if (cartClientDescriptor != null)
-                services.Remove(cartClientDescriptor);
 
             // Build the service provider
             var sp = services.BuildServiceProvider();
@@ -71,33 +82,58 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
     {
         builder.ConfigureServices(services =>
         {
-            // Add HTTP client for ProductsApiClient that uses test server
-            services.AddScoped<RetailDecomposed.Services.IProductsApiClient>(sp =>
+            // Disable antiforgery validation for testing
+            services.AddAntiforgery(options => options.SuppressXFrameOptionsHeader = true);
+            services.AddRazorPages().AddRazorPagesOptions(options =>
             {
-                var client = CreateClient();
-                return new RetailDecomposed.Services.ProductsApiClient(client);
+                options.Conventions.ConfigureFilter(new Microsoft.AspNetCore.Mvc.IgnoreAntiforgeryTokenAttribute());
             });
 
-            // Add HTTP client for CartApiClient that uses test server
-            services.AddScoped<RetailDecomposed.Services.ICartApiClient>(sp =>
+            // Remove the existing HTTP client registrations that were added in Program.cs
+            var descriptorsToRemove = services.Where(d => 
+                d.ServiceType == typeof(RetailDecomposed.Services.IProductsApiClient) ||
+                d.ServiceType == typeof(RetailDecomposed.Services.ICartApiClient) ||
+                d.ServiceType == typeof(RetailDecomposed.Services.IOrdersApiClient) ||
+                d.ServiceType == typeof(RetailDecomposed.Services.ICheckoutApiClient))
+                .ToList();
+            
+            foreach (var descriptor in descriptorsToRemove)
             {
-                var client = CreateClient();
-                return new RetailDecomposed.Services.CartApiClient(client);
-            });
+                services.Remove(descriptor);
+            }
 
-            // Add HTTP client for OrdersApiClient that uses test server
-            services.AddScoped<RetailDecomposed.Services.IOrdersApiClient>(sp =>
-            {
-                var client = CreateClient();
-                return new RetailDecomposed.Services.OrdersApiClient(client);
-            });
+            // Register the authentication propagating handler
+            services.AddTransient<AuthenticationPropagatingHandler>();
 
-            // Add HTTP client for CheckoutApiClient that uses test server
-            services.AddScoped<RetailDecomposed.Services.ICheckoutApiClient>(sp =>
+            // Re-register API clients with test server configuration
+            // Use ConfigurePrimaryHttpMessageHandler to route through the test server
+            services.AddHttpClient<RetailDecomposed.Services.IProductsApiClient, RetailDecomposed.Services.ProductsApiClient>(client =>
             {
-                var client = CreateClient();
-                return new RetailDecomposed.Services.CheckoutApiClient(client);
-            });
+                client.BaseAddress = ClientOptions.BaseAddress;
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => Server.CreateHandler())
+            .AddHttpMessageHandler<AuthenticationPropagatingHandler>();
+
+            services.AddHttpClient<RetailDecomposed.Services.ICartApiClient, RetailDecomposed.Services.CartApiClient>(client =>
+            {
+                client.BaseAddress = ClientOptions.BaseAddress;
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => Server.CreateHandler())
+            .AddHttpMessageHandler<AuthenticationPropagatingHandler>();
+
+            services.AddHttpClient<RetailDecomposed.Services.IOrdersApiClient, RetailDecomposed.Services.OrdersApiClient>(client =>
+            {
+                client.BaseAddress = ClientOptions.BaseAddress;
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => Server.CreateHandler())
+            .AddHttpMessageHandler<AuthenticationPropagatingHandler>();
+
+            services.AddHttpClient<RetailDecomposed.Services.ICheckoutApiClient, RetailDecomposed.Services.CheckoutApiClient>(client =>
+            {
+                client.BaseAddress = ClientOptions.BaseAddress;
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => Server.CreateHandler())
+            .AddHttpMessageHandler<AuthenticationPropagatingHandler>();
         });
 
         base.ConfigureWebHost(builder);

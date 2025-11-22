@@ -1,10 +1,10 @@
 ﻿@page
 @model RetailMonolith.Pages.Orders.IndexModel
 @{
-    ViewData["Title"] = "Orders";
+    ViewData["Title"] = Model.IsAdmin ? "All Orders" : "My Orders";
 }
 
-<h2>All Orders</h2>
+<h2>@(Model.IsAdmin ? "All Orders" : "My Orders")</h2>
 
 @if (!Model.Orders.Any())
 {

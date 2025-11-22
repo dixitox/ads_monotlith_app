@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>RetailDecomposed</RootNamespace>
     <AssemblyName>RetailDecomposed</AssemblyName>
+    <UserSecretsId>f75eacf7-7b8d-4050-b827-1fb97dd60cc5</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +18,9 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Identity.Web" Version="3.3.1" />
+    <PackageReference Include="Microsoft.Identity.Web.DownstreamApi" Version="3.3.1" />
+    <PackageReference Include="Microsoft.Identity.Web.UI" Version="3.3.1" />
   </ItemGroup>
 
   <ItemGroup>

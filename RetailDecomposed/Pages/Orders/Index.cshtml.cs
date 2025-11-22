@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +8,7 @@ using RetailDecomposed.Services;
 
 namespace RetailMonolith.Pages.Orders
 {
+    [Authorize(Policy = "CustomerAccess")]
     public class IndexModel : PageModel
     {
         private readonly IOrdersApiClient _ordersApiClient;
@@ -16,8 +18,14 @@ namespace RetailMonolith.Pages.Orders
         }
 
         public IList<Order> Orders { get; set; } = new List<Order>();
+        public bool IsAdmin { get; set; }
 
         // Decomposed: Orders now come from the Orders API instead of direct database access
-        public async Task OnGetAsync() => Orders = await _ordersApiClient.GetOrdersAsync();
+        public async Task OnGetAsync()
+        {
+            IsAdmin = User.IsInRole("Admin");
+            // API already filters orders based on user's role, no need for client-side filtering
+            Orders = await _ordersApiClient.GetOrdersAsync();
+        }
     }
 }

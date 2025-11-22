@@ -11,17 +11,22 @@ namespace RetailDecomposed.Tests;
 public class OrdersApiTests : IClassFixture<DecomposedWebApplicationFactory>
 {
     private readonly HttpClient _client;
+    private readonly DecomposedWebApplicationFactory _factory;
 
     public OrdersApiTests(DecomposedWebApplicationFactory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
     [Fact]
     public async Task GetOrders_Returns_Success()
     {
+        // Arrange
+        var client = _client.AuthenticateAsAdmin();
+
         // Act
-        var response = await _client.GetAsync("/api/orders");
+        var response = await client.GetAsync("/api/orders");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -31,8 +36,11 @@ public class OrdersApiTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task GetOrders_Returns_ValidListStructure()
     {
+        // Arrange
+        var client = _client.AuthenticateAsAdmin();
+
         // Act
-        var response = await _client.GetAsync("/api/orders");
+        var response = await client.GetAsync("/api/orders");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -46,12 +54,16 @@ public class OrdersApiTests : IClassFixture<DecomposedWebApplicationFactory>
     public async Task GetOrders_Returns_OrdersWithLines()
     {
         // Arrange - Create an order by checking out
-        await _client.PostAsync("/api/cart/ordertestcustomer/items?productId=1&quantity=2", null);
-        var checkoutRequest = new { CustomerId = "ordertestcustomer", PaymentToken = "tok_test" };
-        await _client.PostAsJsonAsync("/api/checkout", checkoutRequest);
+        var customerId = "ordertestcustomer";
+        var customerClient = _client.AuthenticateAs(customerId, customerId, $"{customerId}@example.com");
+        await customerClient.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=2", null);
+        var checkoutRequest = new { CustomerId = customerId, PaymentToken = "tok_test" };
+        var checkoutResponse = await customerClient.PostAsJsonAsync("/api/checkout", checkoutRequest);
+        checkoutResponse.EnsureSuccessStatusCode();
 
-        // Act
-        var response = await _client.GetAsync("/api/orders");
+        // Act - Get orders as admin
+        var adminClient = _client.AuthenticateAsAdmin();
+        var response = await adminClient.GetAsync("/api/orders");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -67,19 +79,27 @@ public class OrdersApiTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task GetOrders_Returns_OrdersInDescendingOrder()
     {
-        // Arrange - Create multiple orders
-        await _client.PostAsync("/api/cart/ordertest1/items?productId=1&quantity=1", null);
-        var checkout1 = new { CustomerId = "ordertest1", PaymentToken = "tok_test" };
-        await _client.PostAsJsonAsync("/api/checkout", checkout1);
+        // Arrange - Create first order
+        var customerId1 = "ordertest1";
+        var client1 = _factory.CreateClient().AuthenticateAs(customerId1, customerId1, $"{customerId1}@example.com");
+        await client1.PostAsync($"/api/cart/{customerId1}/items?productId=1&quantity=1", null);
+        var checkout1 = new { CustomerId = customerId1, PaymentToken = "tok_test" };
+        var checkoutResponse1 = await client1.PostAsJsonAsync("/api/checkout", checkout1);
+        checkoutResponse1.EnsureSuccessStatusCode();
         
         await Task.Delay(100); // Ensure different timestamps
         
-        await _client.PostAsync("/api/cart/ordertest2/items?productId=2&quantity=1", null);
-        var checkout2 = new { CustomerId = "ordertest2", PaymentToken = "tok_test" };
-        await _client.PostAsJsonAsync("/api/checkout", checkout2);
+        // Create second order with fresh client
+        var customerId2 = "ordertest2";
+        var client2 = _factory.CreateClient().AuthenticateAs(customerId2, customerId2, $"{customerId2}@example.com");
+        await client2.PostAsync($"/api/cart/{customerId2}/items?productId=2&quantity=1", null);
+        var checkout2 = new { CustomerId = customerId2, PaymentToken = "tok_test" };
+        var checkoutResponse2 = await client2.PostAsJsonAsync("/api/checkout", checkout2);
+        checkoutResponse2.EnsureSuccessStatusCode();
 
-        // Act
-        var response = await _client.GetAsync("/api/orders");
+        // Act - Get orders as admin with fresh client
+        var adminClient = _factory.CreateClient().AuthenticateAsAdmin();
+        var response = await adminClient.GetAsync("/api/orders");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -98,14 +118,16 @@ public class OrdersApiTests : IClassFixture<DecomposedWebApplicationFactory>
     public async Task GetOrderById_WithValidId_Returns_Order()
     {
         // Arrange - Create an order
-        await _client.PostAsync("/api/cart/orderbyidtest/items?productId=1&quantity=1", null);
-        var checkoutRequest = new { CustomerId = "orderbyidtest", PaymentToken = "tok_test" };
-        var checkoutResponse = await _client.PostAsJsonAsync("/api/checkout", checkoutRequest);
+        var customerId = "orderbyidtest";
+        var client = _client.AuthenticateAs(customerId, customerId, $"{customerId}@example.com");
+        await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
+        var checkoutRequest = new { CustomerId = customerId, PaymentToken = "tok_test" };
+        var checkoutResponse = await client.PostAsJsonAsync("/api/checkout", checkoutRequest);
         var createdOrder = await checkoutResponse.Content.ReadFromJsonAsync<OrderDto>();
         Assert.NotNull(createdOrder);
 
         // Act
-        var response = await _client.GetAsync($"/api/orders/{createdOrder.Id}");
+        var response = await client.GetAsync($"/api/orders/{createdOrder.Id}");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -119,8 +141,11 @@ public class OrdersApiTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task GetOrderById_WithInvalidId_Returns_NotFound()
     {
+        // Arrange
+        var client = _client.AuthenticateAsCustomer();
+
         // Act
-        var response = await _client.GetAsync("/api/orders/99999");
+        var response = await client.GetAsync("/api/orders/99999");
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -130,13 +155,15 @@ public class OrdersApiTests : IClassFixture<DecomposedWebApplicationFactory>
     public async Task GetOrderById_Returns_OrderWithCorrectCustomerId()
     {
         // Arrange
-        await _client.PostAsync("/api/cart/specificcustomer/items?productId=1&quantity=1", null);
-        var checkoutRequest = new { CustomerId = "specificcustomer", PaymentToken = "tok_test" };
-        var checkoutResponse = await _client.PostAsJsonAsync("/api/checkout", checkoutRequest);
+        var customerId = "specificcustomer";
+        var client = _client.AuthenticateAs(customerId, customerId, $"{customerId}@example.com");
+        await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
+        var checkoutRequest = new { CustomerId = customerId, PaymentToken = "tok_test" };
+        var checkoutResponse = await client.PostAsJsonAsync("/api/checkout", checkoutRequest);
         var createdOrder = await checkoutResponse.Content.ReadFromJsonAsync<OrderDto>();
 
         // Act
-        var response = await _client.GetAsync($"/api/orders/{createdOrder!.Id}");
+        var response = await client.GetAsync($"/api/orders/{createdOrder!.Id}");
 
         // Assert
         response.EnsureSuccessStatusCode();

@@ -22,11 +22,12 @@ public class CheckoutApiTests : IClassFixture<DecomposedWebApplicationFactory>
     {
         // Arrange - Add items to cart
         var customerId = "checkouttest1";
-        await _client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=2", null);
+        var client = _client.AuthenticateAs(customerId, customerId, customerId);
+        await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=2", null);
         var checkoutRequest = new { CustomerId = customerId, PaymentToken = "tok_test" };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/checkout", checkoutRequest);
+        var response = await client.PostAsJsonAsync("/api/checkout", checkoutRequest);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -43,11 +44,12 @@ public class CheckoutApiTests : IClassFixture<DecomposedWebApplicationFactory>
     {
         // Arrange
         var customerId = "checkouttest2";
-        await _client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=2", null);
+        var client = _client.AuthenticateAs(customerId, customerId, customerId);
+        await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=2", null);
         var checkoutRequest = new { CustomerId = customerId, PaymentToken = "tok_test" };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/checkout", checkoutRequest);
+        var response = await client.PostAsJsonAsync("/api/checkout", checkoutRequest);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -63,14 +65,15 @@ public class CheckoutApiTests : IClassFixture<DecomposedWebApplicationFactory>
     {
         // Arrange
         var customerId = "checkouttest3";
-        await _client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
+        var client = _client.AuthenticateAs(customerId, customerId, customerId);
+        await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
         var checkoutRequest = new { CustomerId = customerId, PaymentToken = "tok_test" };
 
         // Act
-        await _client.PostAsJsonAsync("/api/checkout", checkoutRequest);
+        await client.PostAsJsonAsync("/api/checkout", checkoutRequest);
         
         // Check cart is empty
-        var cartResponse = await _client.GetAsync($"/api/cart/{customerId}");
+        var cartResponse = await client.GetAsync($"/api/cart/{customerId}");
         var cart = await cartResponse.Content.ReadFromJsonAsync<CartDto>();
 
         // Assert
@@ -82,11 +85,12 @@ public class CheckoutApiTests : IClassFixture<DecomposedWebApplicationFactory>
     public async Task Checkout_WithEmptyCart_Returns_BadRequest()
     {
         // Arrange - Customer with no cart items
+        var client = _client.AuthenticateAsCustomer();
         var customerId = "emptycarttest";
         var checkoutRequest = new { CustomerId = customerId, PaymentToken = "tok_test" };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/checkout", checkoutRequest);
+        var response = await client.PostAsJsonAsync("/api/checkout", checkoutRequest);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -100,12 +104,13 @@ public class CheckoutApiTests : IClassFixture<DecomposedWebApplicationFactory>
     {
         // Arrange
         var customerId = "checkouttest4";
-        await _client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
-        await _client.PostAsync($"/api/cart/{customerId}/items?productId=2&quantity=2", null);
+        var client = _client.AuthenticateAs(customerId, customerId, customerId);
+        await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
+        await client.PostAsync($"/api/cart/{customerId}/items?productId=2&quantity=2", null);
         var checkoutRequest = new { CustomerId = customerId, PaymentToken = "tok_test" };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/checkout", checkoutRequest);
+        var response = await client.PostAsJsonAsync("/api/checkout", checkoutRequest);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -122,15 +127,17 @@ public class CheckoutApiTests : IClassFixture<DecomposedWebApplicationFactory>
     {
         // Arrange
         var customerId = "checkouttest5";
-        await _client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
+        var client = _client.AuthenticateAs(customerId, customerId, customerId);
+        await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
         var checkoutRequest = new { CustomerId = customerId, PaymentToken = "tok_test" };
 
         // Act
-        var checkoutResponse = await _client.PostAsJsonAsync("/api/checkout", checkoutRequest);
+        var checkoutResponse = await client.PostAsJsonAsync("/api/checkout", checkoutRequest);
         var createdOrder = await checkoutResponse.Content.ReadFromJsonAsync<OrderDto>();
         
-        // Get orders list
-        var ordersResponse = await _client.GetAsync("/api/orders");
+        // Get orders list as admin
+        var adminClient = _client.AuthenticateAsAdmin();
+        var ordersResponse = await adminClient.GetAsync("/api/orders");
         var orders = await ordersResponse.Content.ReadFromJsonAsync<List<OrderDto>>();
 
         // Assert
@@ -144,11 +151,12 @@ public class CheckoutApiTests : IClassFixture<DecomposedWebApplicationFactory>
     {
         // Arrange
         var customerId = "checkouttest6";
-        await _client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
+        var client = _client.AuthenticateAs(customerId, customerId, customerId);
+        await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
         var checkoutRequest = new { CustomerId = customerId, PaymentToken = "tok_test" };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/checkout", checkoutRequest);
+        var response = await client.PostAsJsonAsync("/api/checkout", checkoutRequest);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -162,11 +170,12 @@ public class CheckoutApiTests : IClassFixture<DecomposedWebApplicationFactory>
     {
         // Arrange
         var customerId = "checkouttest7";
-        await _client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=3", null);
+        var client = _client.AuthenticateAs(customerId, customerId, customerId);
+        await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=2", null);
         var checkoutRequest = new { CustomerId = customerId, PaymentToken = "tok_test" };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/checkout", checkoutRequest);
+        var response = await client.PostAsJsonAsync("/api/checkout", checkoutRequest);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -177,7 +186,7 @@ public class CheckoutApiTests : IClassFixture<DecomposedWebApplicationFactory>
         Assert.Equal("TEST-001", line.Sku);
         Assert.Equal("Test Product 1", line.Name);
         Assert.Equal(10.99m, line.UnitPrice);
-        Assert.Equal(3, line.Quantity);
+        Assert.Equal(2, line.Quantity);
     }
 
     // DTO classes for deserialization

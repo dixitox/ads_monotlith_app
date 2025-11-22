@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using RetailMonolith.Services;
@@ -6,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace RetailMonolith.Pages.Checkout
 {
+    [Authorize(Policy = "CustomerAccess")]
     public class IndexModel : PageModel
     {
         private readonly ICartApiClient _cartApiClient;
@@ -30,7 +32,9 @@ namespace RetailMonolith.Pages.Checkout
         public async Task OnGetAsync()
         {
             // Decomposed: Fetch cart from Cart API
-            var cart = await _cartApiClient.GetCartAsync("guest");
+            // Use authenticated user's identity as customerId
+            var customerId = User.Identity?.Name ?? "guest";
+            var cart = await _cartApiClient.GetCartAsync(customerId);
             Lines = cart.Lines
                 .Select(line => (line.Name, line.Quantity, line.UnitPrice))
                 .ToList();
@@ -45,7 +49,9 @@ namespace RetailMonolith.Pages.Checkout
             }
 
             // Decomposed: Checkout via Checkout API instead of direct service call
-            var order = await _checkoutApiClient.CheckoutAsync("guest", PaymentToken);
+            // Use authenticated user's identity as customerId
+            var customerId = User.Identity?.Name ?? "guest";
+            var order = await _checkoutApiClient.CheckoutAsync(customerId, PaymentToken);
 
             // redirect to order confirmation page
             return Redirect($"/Orders/Details?id={order.Id}");
