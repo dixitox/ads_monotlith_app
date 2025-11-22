@@ -88,10 +88,41 @@ dotnet run  # This runs RetailMonolith from root
 3. **When testing**: Navigate to http://localhost:6068 (HTTPS)
 4. **When debugging**: Monitor logs from RetailDecomposed process
 
-## Documentation
-- Main AI Copilot Guide: `/AI_COPILOT_COMPLETE_GUIDE.md`
-- Test Documentation: `/Tests/README.md`
-- Authentication Setup: `/RetailDecomposed/AUTHENTICATION_SETUP.md`
+## Documentation Best Practices
+
+### 📋 Avoid Duplication - Reuse Content
+**CRITICAL**: Always check for existing documentation before creating new files.
+
+#### Rules for Markdown Files:
+1. **Single Source of Truth**: Maintain ONE authoritative document per topic
+   - ✅ `Tests/TEST_RESULTS.md` - Consolidated test results (all sessions)
+   - ❌ `Tests/TEST_RESULTS_SESSION_10.md`, `Tests/TEST_RESULTS_SESSION_11.md` - Don't create session-specific duplicates
+
+2. **Merge, Don't Multiply**:
+   - When updating test results, update the existing `TEST_RESULTS.md`
+   - Add new sections or update existing sections
+   - Include session information within the main document
+
+3. **Reference, Don't Duplicate**:
+   - Use links to refer to other documentation
+   - Example: Link to existing docs instead of copying content
+
+4. **Update Existing Documents**:
+   - Add "Development History" sections to track changes over time
+   - Use "Last Updated" dates at the top
+   - Include session notes within existing structure
+
+5. **Before Creating New .md Files**:
+   - Check if content can be added to existing documentation
+   - Search for related files: `file_search` for `*.md` files
+   - Ask: "Does this information fit in an existing document?"
+
+#### Existing Documentation Structure:
+- `/AI_COPILOT_COMPLETE_GUIDE.md` - AI Copilot implementation guide
+- `/Tests/TEST_RESULTS.md` - Consolidated test results (all sessions)
+- `/Tests/README.md` - Test documentation overview
+- `/RetailDecomposed/AUTHENTICATION_SETUP.md` - Authentication configuration
+- `/.github/copilot-instructions.md` - This file (project guidelines)
 
 ## Production Deployment Considerations
 
