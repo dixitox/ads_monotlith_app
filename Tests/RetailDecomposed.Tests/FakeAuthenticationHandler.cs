@@ -58,7 +58,8 @@ public class FakeAuthenticationHandler : AuthenticationHandler<AuthenticationSch
             var roles = userRolesValue.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries);
             foreach (var role in roles)
             {
-                claims.Add(new Claim(ClaimTypes.Role, role.Trim()));
+                // Use the same role claim type as Azure AD uses in production
+                claims.Add(new Claim("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", role.Trim()));
             }
         }
 

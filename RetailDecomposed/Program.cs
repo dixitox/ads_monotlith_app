@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
@@ -5,6 +6,7 @@ using Microsoft.Identity.Web.UI;
 using RetailMonolith.Data;
 using RetailMonolith.Services;
 using System.Security.Claims;
+using System.Text.Encodings.Web;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,13 +31,45 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =
     options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 });
 
+// Check if Azure AD is configured (not using placeholder values)
+var azureAdConfig = builder.Configuration.GetSection("AzureAd");
+var tenantId = azureAdConfig["TenantId"];
+var clientId = azureAdConfig["ClientId"];
+
+var isAzureAdConfigured = !string.IsNullOrEmpty(clientId) &&
+                          !clientId.Contains("your-") &&
+                          !string.IsNullOrEmpty(tenantId) &&
+                          !tenantId.Contains("your-");
+
+if (isAzureAdConfigured)
+{
+    Console.WriteLine($"Using Azure AD authentication with TenantId: {tenantId}");
+}
+else
+{
+    Console.WriteLine("Azure AD not configured - using no-auth mode");
+}
+
 // Add Microsoft Entra ID authentication
-builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApp(options =>
-    {
-        builder.Configuration.Bind("AzureAd", options);
-        options.SignedOutRedirectUri = "/";
-    });
+if (isAzureAdConfigured)
+{
+    builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+        .AddMicrosoftIdentityWebApp(options =>
+        {
+            builder.Configuration.Bind("AzureAd", options);
+            options.SignedOutRedirectUri = "/";
+            
+            // Map Azure AD roles to ASP.NET Core roles
+            // Azure AD sends roles using this specific claim type
+            options.TokenValidationParameters.RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
+        });
+}
+else
+{
+    // Fallback to NoAuth handler for development without Azure AD
+    builder.Services.AddAuthentication("NoAuth")
+        .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, NoAuthHandler>("NoAuth", options => { });
+}
 
 // Add authorization policies
 builder.Services.AddAuthorization(options =>
@@ -46,11 +80,18 @@ builder.Services.AddAuthorization(options =>
         policy.RequireAuthenticatedUser());
 });
 
-builder.Services.AddRazorPages()
-    .AddMicrosoftIdentityUI();
-
-// Add controllers for MicrosoftIdentity UI
-builder.Services.AddControllers();
+// Add MicrosoftIdentityUI for sign-in/sign-out when Azure AD is configured
+if (isAzureAdConfigured)
+{
+    builder.Services.AddRazorPages()
+        .AddMicrosoftIdentityUI();
+    // Add controllers for MicrosoftIdentity UI
+    builder.Services.AddControllers();
+}
+else
+{
+    builder.Services.AddRazorPages();
+}
 
 // Add antiforgery services
 builder.Services.AddAntiforgery(options =>
@@ -64,6 +105,9 @@ builder.Services.AddScoped<ICartService, CartService>();
 
 // Add support for propagating user tokens to downstream services
 builder.Services.AddHttpContextAccessor();
+
+// Register cookie propagating handler for API calls
+builder.Services.AddTransient<RetailDecomposed.Services.CookiePropagatingHandler>();
 
 // Helper method to create HttpMessageHandler with development certificate validation bypass
 static HttpMessageHandler CreateHttpMessageHandler(bool isDevelopment)
@@ -79,11 +123,11 @@ static HttpMessageHandler CreateHttpMessageHandler(bool isDevelopment)
 }
 
 // Register Cart API Client for decomposed Cart module
-// Note: Token propagation for API-to-API calls can be added later using custom DelegatingHandler
 builder.Services.AddHttpClient<RetailDecomposed.Services.ICartApiClient, RetailDecomposed.Services.CartApiClient>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:6068");
 })
+.AddHttpMessageHandler<RetailDecomposed.Services.CookiePropagatingHandler>()
 .ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
 
 // Register Products API Client for decomposed Products module
@@ -91,6 +135,7 @@ builder.Services.AddHttpClient<RetailDecomposed.Services.IProductsApiClient, Ret
 {
     client.BaseAddress = new Uri("https://localhost:6068");
 })
+.AddHttpMessageHandler<RetailDecomposed.Services.CookiePropagatingHandler>()
 .ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
 
 // Register Orders API Client for decomposed Orders module
@@ -98,6 +143,7 @@ builder.Services.AddHttpClient<RetailDecomposed.Services.IOrdersApiClient, Retai
 {
     client.BaseAddress = new Uri("https://localhost:6068");
 })
+.AddHttpMessageHandler<RetailDecomposed.Services.CookiePropagatingHandler>()
 .ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
 
 // Register Checkout API Client for decomposed Checkout module
@@ -105,6 +151,7 @@ builder.Services.AddHttpClient<RetailDecomposed.Services.ICheckoutApiClient, Ret
 {
     client.BaseAddress = new Uri("https://localhost:6068");
 })
+.AddHttpMessageHandler<RetailDecomposed.Services.CookiePropagatingHandler>()
 .ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
 
 builder.Services.AddHealthChecks();
@@ -131,10 +178,18 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+
+// Use authentication and authorization middleware
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapRazorPages();
-app.MapControllers(); // Enable MicrosoftIdentity area controllers
+
+// Only map controllers if Azure AD is configured (for MicrosoftIdentity area controllers)
+if (isAzureAdConfigured)
+{
+    app.MapControllers();
+}
 
 // Helper method to validate that the authenticated user matches the requested customerId
 static bool IsAuthorizedForCustomer(HttpContext httpContext, string customerId)
@@ -143,89 +198,139 @@ static bool IsAuthorizedForCustomer(HttpContext httpContext, string customerId)
     return !string.IsNullOrEmpty(authenticatedUserId) && authenticatedUserId == customerId;
 }
 
-// Cart API surface for decomposition
-app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart, ClaimsPrincipal user) =>
+// Helper method to apply authorization when Azure AD is configured
+static RouteHandlerBuilder ApplyAuthorizationIfConfigured(RouteHandlerBuilder builder, bool isConfigured, string policyName)
 {
-    // Validate that the authenticated user matches the customerId
-    var authenticatedUserId = user.Identity?.Name;
-    if (authenticatedUserId != customerId)
-    {
-        return Results.Forbid();
-    }
-    
-    var cartData = await cart.GetCartWithLinesAsync(customerId);
-    return Results.Ok(cartData);
-}).RequireAuthorization("CustomerAccess");
+    return isConfigured ? builder.RequireAuthorization(policyName) : builder.AllowAnonymous();
+}
 
-app.MapPost("/api/cart/{customerId}/items", async (string customerId, int productId, int quantity, ICartService cart, ClaimsPrincipal user) =>
-{
-    // Validate that the authenticated user matches the customerId
-    var authenticatedUserId = user.Identity?.Name;
-    if (authenticatedUserId != customerId)
+// Cart API surface for decomposition
+ApplyAuthorizationIfConfigured(
+    app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart, ClaimsPrincipal user) =>
     {
-        return Results.Forbid();
-    }
-    
-    await cart.AddToCartAsync(customerId, productId, quantity);
-    return Results.Ok();
-}).RequireAuthorization("CustomerAccess");
+        // Validate that the authenticated user matches the customerId (only if Azure AD is configured)
+        if (isAzureAdConfigured)
+        {
+            var authenticatedUserId = user.Identity?.Name;
+            if (authenticatedUserId != customerId)
+            {
+                return Results.Forbid();
+            }
+        }
+        
+        var cartData = await cart.GetCartWithLinesAsync(customerId);
+        return Results.Ok(cartData);
+    }),
+    isAzureAdConfigured,
+    "CustomerAccess"
+);
+
+ApplyAuthorizationIfConfigured(
+    app.MapPost("/api/cart/{customerId}/items", async (string customerId, int productId, int quantity, ICartService cart, ClaimsPrincipal user) =>
+    {
+        // Validate that the authenticated user matches the customerId (only if Azure AD is configured)
+        if (isAzureAdConfigured)
+        {
+            var authenticatedUserId = user.Identity?.Name;
+            if (authenticatedUserId != customerId)
+            {
+                return Results.Forbid();
+            }
+        }
+        
+        await cart.AddToCartAsync(customerId, productId, quantity);
+        return Results.Ok();
+    }),
+    isAzureAdConfigured,
+    "CustomerAccess"
+);
 
 // Products API surface for decomposition
-app.MapGet("/api/products", async (AppDbContext db) =>
-{
-    var products = await db.Products.Where(p => p.IsActive).ToListAsync();
-    return Results.Ok(products);
-}).RequireAuthorization("CustomerAccess");
+ApplyAuthorizationIfConfigured(
+    app.MapGet("/api/products", async (AppDbContext db) =>
+    {
+        var products = await db.Products.Where(p => p.IsActive).ToListAsync();
+        return Results.Ok(products);
+    }),
+    isAzureAdConfigured,
+    "CustomerAccess"
+);
 
-app.MapGet("/api/products/{id}", async (int id, AppDbContext db) =>
-{
-    var product = await db.Products.FindAsync(id);
-    if (product is null)
-        return Results.NotFound();
-    return Results.Ok(product);
-}).RequireAuthorization("CustomerAccess");
+ApplyAuthorizationIfConfigured(
+    app.MapGet("/api/products/{id}", async (int id, AppDbContext db) =>
+    {
+        var product = await db.Products.FindAsync(id);
+        if (product is null)
+            return Results.NotFound();
+        return Results.Ok(product);
+    }),
+    isAzureAdConfigured,
+    "CustomerAccess"
+);
 
 // Orders API surface for decomposition
-app.MapGet("/api/orders", async (AppDbContext db, ClaimsPrincipal user) =>
-{
-    // If user is Admin, return all orders. Otherwise, return only their orders.
-    var userId = user.Identity?.Name;
-    var isAdmin = user.IsInRole("Admin");
-    
-    IQueryable<RetailMonolith.Models.Order> query = db.Orders.Include(o => o.Lines);
-    
-    if (!isAdmin && !string.IsNullOrEmpty(userId))
+ApplyAuthorizationIfConfigured(
+    app.MapGet("/api/orders", async (AppDbContext db, ClaimsPrincipal user, ILogger<Program> logger) =>
     {
-        query = query.Where(o => o.CustomerId == userId);
-    }
-    
-    var orders = await query.OrderByDescending(o => o.CreatedUtc).ToListAsync();
-    return Results.Ok(orders);
-}).RequireAuthorization("CustomerAccess");
+        // If user is Admin, return all orders. Otherwise, return only their orders.
+        var userId = user.Identity?.Name;
+        var isAdmin = user.IsInRole("Admin");
+        
+        logger.LogInformation("Orders API called by user: {UserId}, IsAdmin: {IsAdmin}, IsAuthenticated: {IsAuthenticated}", 
+            userId, isAdmin, user.Identity?.IsAuthenticated);
+        
+        IQueryable<RetailMonolith.Models.Order> query = db.Orders.Include(o => o.Lines);
+        
+        // Only filter by user if Azure AD is configured and user is not admin
+        if (isAzureAdConfigured && !isAdmin && !string.IsNullOrEmpty(userId))
+        {
+            logger.LogInformation("Filtering orders for user: {UserId}", userId);
+            query = query.Where(o => o.CustomerId == userId);
+        }
+        else if (isAdmin)
+        {
+            logger.LogInformation("Admin user - returning all orders");
+        }
+        
+        var orders = await query.OrderByDescending(o => o.CreatedUtc).ToListAsync();
+        logger.LogInformation("Returning {OrderCount} orders", orders.Count);
+        return Results.Ok(orders);
+    }),
+    isAzureAdConfigured,
+    "CustomerAccess"
+);
 
-app.MapGet("/api/orders/{id}", async (int id, AppDbContext db) =>
-{
-    var order = await db.Orders
-        .Include(o => o.Lines)
-        .FirstOrDefaultAsync(o => o.Id == id);
-    if (order is null)
-        return Results.NotFound();
-    return Results.Ok(order);
-}).RequireAuthorization("CustomerAccess");
+ApplyAuthorizationIfConfigured(
+    app.MapGet("/api/orders/{id}", async (int id, AppDbContext db) =>
+    {
+        var order = await db.Orders
+            .Include(o => o.Lines)
+            .FirstOrDefaultAsync(o => o.Id == id);
+        if (order is null)
+            return Results.NotFound();
+        return Results.Ok(order);
+    }),
+    isAzureAdConfigured,
+    "CustomerAccess"
+);
 
 // Checkout API surface for decomposition
-app.MapPost("/api/checkout", async (CheckoutRequest request, ICheckoutService checkoutService) =>
-{
-    try
+ApplyAuthorizationIfConfigured(
+    app.MapPost("/api/checkout", async (CheckoutRequest request, ICheckoutService checkoutService) =>
     {
-        var order = await checkoutService.CheckoutAsync(request.CustomerId, request.PaymentToken);
-        return Results.Ok(order);
-    }
-    catch (InvalidOperationException ex)
-    {
-        return Results.BadRequest(new { error = ex.Message });
-    }
-}).RequireAuthorization("CustomerAccess");
+        try
+        {
+            var order = await checkoutService.CheckoutAsync(request.CustomerId, request.PaymentToken);
+            return Results.Ok(order);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    }),
+    isAzureAdConfigured,
+    "CustomerAccess"
+);
 
 // Display API endpoints banner
 var urls = app.Urls.FirstOrDefault() ?? "http://localhost:6068";
@@ -260,6 +365,42 @@ Console.WriteLine("  │  └─ POST /api/checkout        → Process checkout"
 Console.WriteLine("\n" + new string('=', 80) + "\n");
 
 app.Run();
+
+// Dummy authentication handler that allows all requests without authentication
+// Provides a fake "guest" user identity for development without Azure AD
+public class NoAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+{
+    public NoAuthHandler(
+        Microsoft.Extensions.Options.IOptionsMonitor<AuthenticationSchemeOptions> options,
+        Microsoft.Extensions.Logging.ILoggerFactory logger,
+        UrlEncoder encoder) : base(options, logger, encoder)
+    {
+    }
+
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        // Create a fake guest user identity with required claims
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.Name, "guest"),
+            new Claim(ClaimTypes.NameIdentifier, "guest"),
+            new Claim(ClaimTypes.Email, "guest@example.com")
+        };
+        
+        var identity = new ClaimsIdentity(claims, Scheme.Name);
+        var principal = new ClaimsPrincipal(identity);
+        var ticket = new AuthenticationTicket(principal, Scheme.Name);
+        
+        return Task.FromResult(AuthenticateResult.Success(ticket));
+    }
+
+    protected override Task HandleChallengeAsync(AuthenticationProperties properties)
+    {
+        // Don't redirect to login, just allow access
+        Response.StatusCode = 200;
+        return Task.CompletedTask;
+    }
+}
 
 // DTOs for API endpoints
 record CheckoutRequest(string CustomerId, string PaymentToken);
