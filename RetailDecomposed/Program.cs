@@ -41,10 +41,11 @@ var isAzureAdConfigured = !string.IsNullOrEmpty(clientId) &&
                           !string.IsNullOrEmpty(tenantId) &&
                           Guid.TryParse(tenantId, out _);
 
-// In Testing environment, treat as configured for authorization purposes
-// (even though we use FakeAuthenticationHandler instead of real Azure AD)
+// Determine if authorization should be required
+// Priority: Explicit configuration > Azure AD configured > Testing environment
+var requireAuthorizationConfig = builder.Configuration.GetValue<bool?>("RequireAuthorization");
 var isTesting = builder.Environment.IsEnvironment("Testing");
-var requireAuthorization = isAzureAdConfigured || isTesting;
+var requireAuthorization = requireAuthorizationConfig ?? (isAzureAdConfigured || isTesting);
 
 if (isAzureAdConfigured)
 {

@@ -24,9 +24,19 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
         // Set environment to Testing to trigger environment-based database configuration
         builder.UseEnvironment("Testing");
 
-        // Configure Azure AD settings for tests with INVALID values
-        // This ensures isAzureAdConfigured = false, which forces RequireAuthorization() on endpoints
-        // We want to test authentication behavior with FakeAuthenticationHandler
+        // Configure Azure AD settings for tests with intentionally invalid values
+        // 
+        // RATIONALE: In Program.cs, the app checks if Azure AD is properly configured by validating
+        // that TenantId and ClientId are valid GUIDs. If they are NOT valid GUIDs, it sets
+        // isAzureAdConfigured = false. However, when Environment is "Testing", the app still
+        // enables authorization (requireAuthorization = isAzureAdConfigured || isTesting).
+        //
+        // This approach allows us to:
+        // 1. Test authorization behavior without needing real Azure AD credentials
+        // 2. Use FakeAuthenticationHandler to simulate authenticated users
+        // 3. Verify that endpoints properly enforce authorization requirements
+        //
+        // The values below are intentionally NOT valid GUIDs to prevent accidental real Azure AD calls
         builder.ConfigureAppConfiguration((context, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string>
