@@ -37,9 +37,9 @@ var tenantId = azureAdConfig["TenantId"];
 var clientId = azureAdConfig["ClientId"];
 
 var isAzureAdConfigured = !string.IsNullOrEmpty(clientId) &&
-                          !clientId.Contains("your-") &&
+                          Guid.TryParse(clientId, out _) &&
                           !string.IsNullOrEmpty(tenantId) &&
-                          !tenantId.Contains("your-");
+                          Guid.TryParse(tenantId, out _);
 
 if (isAzureAdConfigured)
 {
@@ -109,15 +109,26 @@ builder.Services.AddHttpContextAccessor();
 // Register cookie propagating handler for API calls
 builder.Services.AddTransient<RetailDecomposed.Services.CookiePropagatingHandler>();
 
-// Helper method to create HttpMessageHandler with development certificate validation bypass
+// WARNING: Never use DangerousAcceptAnyServerCertificateValidator in production!
+// This bypasses ALL SSL certificate validation and exposes the application to MITM attacks.
+// Ensure this is ONLY enabled in development. If enabled in any other environment, fail fast.
 static HttpMessageHandler CreateHttpMessageHandler(bool isDevelopment)
 {
     var handler = new HttpClientHandler();
     if (isDevelopment)
     {
         // Allow untrusted certificates in development only
-        handler.ServerCertificateCustomValidationCallback = 
+        handler.ServerCertificateCustomValidationCallback =
             HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+    }
+    else
+    {
+        // Defensive: If this ever gets enabled in non-development, throw.
+        if (handler.ServerCertificateCustomValidationCallback == HttpClientHandler.DangerousAcceptAnyServerCertificateValidator)
+        {
+            throw new InvalidOperationException(
+                "DangerousAcceptAnyServerCertificateValidator must NEVER be used in production. Check environment configuration.");
+        }
     }
     return handler;
 }
@@ -394,11 +405,11 @@ public class NoAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
         return Task.FromResult(AuthenticateResult.Success(ticket));
     }
 
-    protected override Task HandleChallengeAsync(AuthenticationProperties properties)
+    protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        // Don't redirect to login, just allow access
-        Response.StatusCode = 200;
-        return Task.CompletedTask;
+        // Return 401 Unauthorized to indicate authentication failure
+        Response.StatusCode = 401;
+        await Response.WriteAsync("Authentication required.");
     }
 }
 

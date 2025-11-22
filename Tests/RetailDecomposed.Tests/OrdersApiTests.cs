@@ -81,8 +81,7 @@ public class OrdersApiTests : IClassFixture<DecomposedWebApplicationFactory>
     {
         // Arrange - Create first order
         var customerId1 = "ordertest1";
-        var client1 = _factory.CreateClient();
-        client1.AuthenticateAs(customerId1, customerId1, $"{customerId1}@example.com");
+        var client1 = _factory.CreateClient().AuthenticateAs(customerId1, customerId1, $"{customerId1}@example.com");
         await client1.PostAsync($"/api/cart/{customerId1}/items?productId=1&quantity=1", null);
         var checkout1 = new { CustomerId = customerId1, PaymentToken = "tok_test" };
         var checkoutResponse1 = await client1.PostAsJsonAsync("/api/checkout", checkout1);
@@ -92,16 +91,14 @@ public class OrdersApiTests : IClassFixture<DecomposedWebApplicationFactory>
         
         // Create second order with fresh client
         var customerId2 = "ordertest2";
-        var client2 = _factory.CreateClient();
-        client2.AuthenticateAs(customerId2, customerId2, $"{customerId2}@example.com");
+        var client2 = _factory.CreateClient().AuthenticateAs(customerId2, customerId2, $"{customerId2}@example.com");
         await client2.PostAsync($"/api/cart/{customerId2}/items?productId=2&quantity=1", null);
         var checkout2 = new { CustomerId = customerId2, PaymentToken = "tok_test" };
         var checkoutResponse2 = await client2.PostAsJsonAsync("/api/checkout", checkout2);
         checkoutResponse2.EnsureSuccessStatusCode();
 
         // Act - Get orders as admin with fresh client
-        var adminClient = _factory.CreateClient();
-        adminClient.AuthenticateAsAdmin();
+        var adminClient = _factory.CreateClient().AuthenticateAsAdmin();
         var response = await adminClient.GetAsync("/api/orders");
 
         // Assert
