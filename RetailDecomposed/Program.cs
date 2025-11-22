@@ -41,6 +41,11 @@ var isAzureAdConfigured = !string.IsNullOrEmpty(clientId) &&
                           !string.IsNullOrEmpty(tenantId) &&
                           Guid.TryParse(tenantId, out _);
 
+// In Testing environment, treat as configured for authorization purposes
+// (even though we use FakeAuthenticationHandler instead of real Azure AD)
+var isTesting = builder.Environment.IsEnvironment("Testing");
+var requireAuthorization = isAzureAdConfigured || isTesting;
+
 if (isAzureAdConfigured)
 {
     Console.WriteLine($"Using Azure AD authentication with TenantId: {tenantId}");
@@ -83,14 +88,28 @@ builder.Services.AddAuthorization(options =>
 // Add MicrosoftIdentityUI for sign-in/sign-out when Azure AD is configured
 if (isAzureAdConfigured)
 {
-    builder.Services.AddRazorPages()
+    builder.Services.AddRazorPages(options =>
+    {
+        // Require authentication for specific pages when authorization is required
+        if (requireAuthorization)
+        {
+            options.Conventions.AuthorizePage("/Copilot/Index", "CustomerAccess");
+        }
+    })
         .AddMicrosoftIdentityUI();
     // Add controllers for MicrosoftIdentity UI
     builder.Services.AddControllers();
 }
 else
 {
-    builder.Services.AddRazorPages();
+    builder.Services.AddRazorPages(options =>
+    {
+        // Require authentication for specific pages when authorization is required
+        if (requireAuthorization)
+        {
+            options.Conventions.AuthorizePage("/Copilot/Index", "CustomerAccess");
+        }
+    });
 }
 
 // Add antiforgery services
@@ -222,8 +241,8 @@ static RouteHandlerBuilder ApplyAuthorizationIfConfigured(RouteHandlerBuilder bu
 ApplyAuthorizationIfConfigured(
     app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart, ClaimsPrincipal user) =>
     {
-        // Validate that the authenticated user matches the customerId (only if Azure AD is configured)
-        if (isAzureAdConfigured)
+        // Validate that the authenticated user matches the customerId (only if authorization is required)
+        if (requireAuthorization)
         {
             var authenticatedUserId = user.Identity?.Name;
             if (authenticatedUserId != customerId)
@@ -235,15 +254,15 @@ ApplyAuthorizationIfConfigured(
         var cartData = await cart.GetCartWithLinesAsync(customerId);
         return Results.Ok(cartData);
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
     "CustomerAccess"
 );
 
 ApplyAuthorizationIfConfigured(
     app.MapPost("/api/cart/{customerId}/items", async (string customerId, int productId, int quantity, ICartService cart, ClaimsPrincipal user) =>
     {
-        // Validate that the authenticated user matches the customerId (only if Azure AD is configured)
-        if (isAzureAdConfigured)
+        // Validate that the authenticated user matches the customerId (only if authorization is required)
+        if (requireAuthorization)
         {
             var authenticatedUserId = user.Identity?.Name;
             if (authenticatedUserId != customerId)
@@ -255,15 +274,15 @@ ApplyAuthorizationIfConfigured(
         await cart.AddToCartAsync(customerId, productId, quantity);
         return Results.Ok();
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
     "CustomerAccess"
 );
 
 ApplyAuthorizationIfConfigured(
     app.MapDelete("/api/cart/{customerId}/items/{sku}", async (string customerId, string sku, ICartService cart, ClaimsPrincipal user) =>
     {
-        // Validate that the authenticated user matches the customerId (only if Azure AD is configured)
-        if (isAzureAdConfigured)
+        // Validate that the authenticated user matches the customerId (only if authorization is required)
+        if (requireAuthorization)
         {
             var authenticatedUserId = user.Identity?.Name;
             if (authenticatedUserId != customerId)
@@ -275,15 +294,15 @@ ApplyAuthorizationIfConfigured(
         await cart.RemoveFromCartAsync(customerId, sku);
         return Results.Ok();
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
     "CustomerAccess"
 );
 
 ApplyAuthorizationIfConfigured(
     app.MapDelete("/api/cart/{customerId}", async (string customerId, ICartService cart, ClaimsPrincipal user) =>
     {
-        // Validate that the authenticated user matches the customerId (only if Azure AD is configured)
-        if (isAzureAdConfigured)
+        // Validate that the authenticated user matches the customerId (only if authorization is required)
+        if (requireAuthorization)
         {
             var authenticatedUserId = user.Identity?.Name;
             if (authenticatedUserId != customerId)
@@ -295,7 +314,7 @@ ApplyAuthorizationIfConfigured(
         await cart.ClearCartAsync(customerId);
         return Results.Ok();
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
     "CustomerAccess"
 );
 
@@ -306,7 +325,7 @@ ApplyAuthorizationIfConfigured(
         var products = await db.Products.Where(p => p.IsActive).ToListAsync();
         return Results.Ok(products);
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
     "CustomerAccess"
 );
 
@@ -318,7 +337,7 @@ ApplyAuthorizationIfConfigured(
             return Results.NotFound();
         return Results.Ok(product);
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
     "CustomerAccess"
 );
 
@@ -335,8 +354,8 @@ ApplyAuthorizationIfConfigured(
         
         IQueryable<RetailMonolith.Models.Order> query = db.Orders.Include(o => o.Lines);
         
-        // Only filter by user if Azure AD is configured and user is not admin
-        if (isAzureAdConfigured && !isAdmin && !string.IsNullOrEmpty(userId))
+        // Only filter by user if authorization is required and user is not admin
+        if (requireAuthorization && !isAdmin && !string.IsNullOrEmpty(userId))
         {
             logger.LogInformation("Filtering orders for user: {UserId}", userId);
             query = query.Where(o => o.CustomerId == userId);
@@ -350,7 +369,7 @@ ApplyAuthorizationIfConfigured(
         logger.LogInformation("Returning {OrderCount} orders", orders.Count);
         return Results.Ok(orders);
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
     "CustomerAccess"
 );
 
@@ -364,7 +383,7 @@ ApplyAuthorizationIfConfigured(
             return Results.NotFound();
         return Results.Ok(order);
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
     "CustomerAccess"
 );
 
@@ -382,7 +401,7 @@ ApplyAuthorizationIfConfigured(
             return Results.BadRequest(new { error = ex.Message });
         }
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
     "CustomerAccess"
 );
 
@@ -410,7 +429,7 @@ ApplyAuthorizationIfConfigured(
                 statusCode: 500);
         }
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
     "CustomerAccess"
 );
 

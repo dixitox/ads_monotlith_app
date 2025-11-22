@@ -24,13 +24,15 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
         // Set environment to Testing to trigger environment-based database configuration
         builder.UseEnvironment("Testing");
 
-        // Configure Azure AD settings for tests so isAzureAdConfigured evaluates to true
+        // Configure Azure AD settings for tests with INVALID values
+        // This ensures isAzureAdConfigured = false, which forces RequireAuthorization() on endpoints
+        // We want to test authentication behavior with FakeAuthenticationHandler
         builder.ConfigureAppConfiguration((context, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string>
             {
-                ["AzureAd:TenantId"] = "00000000-0000-0000-0000-000000000001",
-                ["AzureAd:ClientId"] = "00000000-0000-0000-0000-000000000002",
+                ["AzureAd:TenantId"] = "test-tenant-not-a-guid",
+                ["AzureAd:ClientId"] = "test-client-not-a-guid",
                 ["AzureAd:Domain"] = "test.onmicrosoft.com",
                 ["AzureAd:Instance"] = "https://login.microsoftonline.com/"
             });
@@ -82,6 +84,18 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
     {
         builder.ConfigureServices(services =>
         {
+            // Remove Microsoft Identity authentication added by Program.cs
+            // We need our FakeAuthenticationHandler to be the only authentication scheme
+            var authDescriptors = services.Where(d => 
+                d.ServiceType.FullName?.Contains("Microsoft.Identity") == true ||
+                d.ServiceType.FullName?.Contains("Microsoft.AspNetCore.Authentication.OpenIdConnect") == true)
+                .ToList();
+            
+            foreach (var descriptor in authDescriptors)
+            {
+                services.Remove(descriptor);
+            }
+
             // Disable antiforgery validation for testing
             services.AddAntiforgery(options => options.SuppressXFrameOptionsHeader = true);
             services.AddRazorPages().AddRazorPagesOptions(options =>
