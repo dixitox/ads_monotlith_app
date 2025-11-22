@@ -12,7 +12,14 @@
             </span>
         </li>
         <li class="nav-item">
-            <a class="nav-link text-dark" asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignOut" asp-route-scheme="OpenIdConnect">Sign out</a>
+            @if (User.HasClaim(c => c.Type == "http://schemas.microsoft.com/identity/claims/tenantid"))
+            {
+                <a class="nav-link text-dark" asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignOut" asp-route-scheme="OpenIdConnect">Sign out</a>
+            }
+            else
+            {
+                <a class="nav-link text-dark" asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignOut">Sign out</a>
+            }
         </li>
     </ul>
 }

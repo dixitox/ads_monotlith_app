@@ -24,13 +24,29 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
         // Set environment to Testing to trigger environment-based database configuration
         builder.UseEnvironment("Testing");
 
+        // Configure Azure AD settings for tests so isAzureAdConfigured evaluates to true
+        builder.ConfigureAppConfiguration((context, config) =>
+        {
+            config.AddInMemoryCollection(new Dictionary<string, string>
+            {
+                ["AzureAd:TenantId"] = "00000000-0000-0000-0000-000000000001",
+                ["AzureAd:ClientId"] = "00000000-0000-0000-0000-000000000002",
+                ["AzureAd:Domain"] = "test.onmicrosoft.com",
+                ["AzureAd:Instance"] = "https://login.microsoftonline.com/"
+            });
+        });
+
         builder.ConfigureServices(services =>
         {
             // Replace authentication with fake authentication for testing
-            services.RemoveAll<IAuthenticationSchemeProvider>();
-            services.AddAuthentication(FakeAuthenticationHandler.AuthenticationScheme)
-                .AddScheme<AuthenticationSchemeOptions, FakeAuthenticationHandler>(
-                    FakeAuthenticationHandler.AuthenticationScheme, options => { });
+            services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = FakeAuthenticationHandler.AuthenticationScheme;
+                options.DefaultChallengeScheme = FakeAuthenticationHandler.AuthenticationScheme;
+                options.DefaultScheme = FakeAuthenticationHandler.AuthenticationScheme;
+            })
+            .AddScheme<AuthenticationSchemeOptions, FakeAuthenticationHandler>(
+                FakeAuthenticationHandler.AuthenticationScheme, options => { });
 
             // Remove existing DbContext registrations
             services.RemoveAll<DbContextOptions<AppDbContext>>();

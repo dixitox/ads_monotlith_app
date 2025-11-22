@@ -66,7 +66,7 @@ public class CheckoutApiTests : IClassFixture<DecomposedWebApplicationFactory>
         // Arrange
         var customerId = "checkouttest3";
         var client = _client.AuthenticateAs(customerId, customerId, customerId);
-        await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=2", null);
+        await client.PostAsync($"/api/cart/{customerId}/items?productId=1&quantity=1", null);
         var checkoutRequest = new { CustomerId = customerId, PaymentToken = "tok_test" };
 
         // Act
