@@ -105,7 +105,7 @@ namespace RetailDecomposed.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error generating AI copilot response");
+                _logger.LogError(ex, "Error generating AI copilot response for message: {Message}", userMessage);
                 return "I apologize, but I'm having trouble processing your request right now. Please try again later.";
             }
         }

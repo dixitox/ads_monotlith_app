@@ -519,10 +519,24 @@
                 throw new Error('Some products failed to add');
             }
         } catch (error) {
-            console.error('Error adding all to cart:', error);
+            // Log full error details for debugging
+            if (error && error.stack) {
+                console.error('Error adding all to cart:', error.stack);
+            } else {
+                console.error('Error adding all to cart:', error);
+            }
+
+            // Show a user-friendly error message in the UI
             buttonElement.innerHTML = '<i class="bi bi-x-circle"></i> Failed';
-            addMessage('❌ Sorry, I couldn\'t add all products to cart. Please try adding them individually.', 'assistant', true);
+            buttonElement.classList.remove('btn-success');
             
+            let userMessage = '❌ Sorry, I couldn\'t add all products to cart. Please try adding them individually.';
+            if (error && error.message) {
+                userMessage += `\n\nError: ${error.message}`;
+            }
+            addMessage(userMessage, 'assistant', true);
+            
+            // Ensure button state is properly reset
             setTimeout(() => {
                 buttonElement.innerHTML = originalHTML;
                 buttonElement.disabled = false;
