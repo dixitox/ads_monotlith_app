@@ -44,7 +44,12 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
                 ["AzureAd:TenantId"] = "test-tenant-not-a-guid",
                 ["AzureAd:ClientId"] = "test-client-not-a-guid",
                 ["AzureAd:Domain"] = "test.onmicrosoft.com",
-                ["AzureAd:Instance"] = "https://login.microsoftonline.com/"
+                ["AzureAd:Instance"] = "https://login.microsoftonline.com/",
+                // Mock Azure AI configuration to allow CopilotService initialization in tests
+                ["AzureAI:Endpoint"] = "https://mock-azure-ai.openai.azure.com/",
+                ["AzureAI:DeploymentName"] = "gpt-4o-test",
+                ["AzureAI:MaxTokens"] = "800",
+                ["AzureAI:Temperature"] = "0.7"
             });
         });
 
