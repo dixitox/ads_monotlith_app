@@ -21,10 +21,17 @@
                         <p class="card-text text-muted mb-2">@product.Category</p>
                         <h6 class="fw-semibold mb-3">@product.Price.ToString("C")</h6>
 
-                        <form method="post" asp-page-handler="AddToCart">
-                            <input type="hidden" name="productId" value="@product.Id" />
-                            <button type="submit" class="btn btn-primary">Add to Cart</button>
-                        </form>
+                        <div class="mt-auto">
+                            <a asp-page="/Products/Details" asp-route-id="@product.Id" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="bi bi-eye"></i> View Details
+                            </a>
+                            <form method="post" asp-page-handler="AddToCart">
+                                <input type="hidden" name="productId" value="@product.Id" />
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-cart-plus"></i> Add to Cart
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>

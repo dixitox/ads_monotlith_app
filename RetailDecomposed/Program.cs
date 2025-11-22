@@ -149,6 +149,9 @@ builder.Services.AddHttpClient<RetailDecomposed.Services.IProductsApiClient, Ret
 .AddHttpMessageHandler<RetailDecomposed.Services.CookiePropagatingHandler>()
 .ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
 
+// Register AI Copilot service (depends on IProductsApiClient)
+builder.Services.AddScoped<RetailDecomposed.Services.ICopilotService, RetailDecomposed.Services.CopilotService>();
+
 // Register Orders API Client for decomposed Orders module
 builder.Services.AddHttpClient<RetailDecomposed.Services.IOrdersApiClient, RetailDecomposed.Services.OrdersApiClient>(client =>
 {
@@ -343,6 +346,34 @@ ApplyAuthorizationIfConfigured(
     "CustomerAccess"
 );
 
+// AI Copilot Chat API
+ApplyAuthorizationIfConfigured(
+    app.MapPost("/api/chat", async (ChatRequest request, RetailDecomposed.Services.ICopilotService copilotService) =>
+    {
+        if (string.IsNullOrWhiteSpace(request.Message))
+        {
+            return Results.BadRequest(new { error = "Message cannot be empty" });
+        }
+
+        try
+        {
+            var response = await copilotService.GetChatResponseAsync(
+                request.Message,
+                request.ConversationHistory);
+            
+            return Results.Ok(new { response });
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem(
+                detail: "An error occurred processing your request",
+                statusCode: 500);
+        }
+    }),
+    isAzureAdConfigured,
+    "CustomerAccess"
+);
+
 // Display API endpoints banner
 var urls = app.Urls.FirstOrDefault() ?? "http://localhost:6068";
 Console.WriteLine("\n" + new string('=', 80));
@@ -373,6 +404,10 @@ Console.ForegroundColor = ConsoleColor.Yellow;
 Console.WriteLine("  ┌─ Checkout API");
 Console.ResetColor();
 Console.WriteLine("  │  └─ POST /api/checkout        → Process checkout");
+Console.ForegroundColor = ConsoleColor.Yellow;
+Console.WriteLine("  ┌─ AI Copilot API");
+Console.ResetColor();
+Console.WriteLine("  │  └─ POST /api/chat            → Chat with AI assistant");
 Console.WriteLine("\n" + new string('=', 80) + "\n");
 
 app.Run();
@@ -415,6 +450,7 @@ public class NoAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 
 // DTOs for API endpoints
 record CheckoutRequest(string CustomerId, string PaymentToken);
+record ChatRequest(string Message, List<RetailDecomposed.Services.ChatMessage>? ConversationHistory);
 
 // Make Program class accessible to test projects
 namespace RetailDecomposed

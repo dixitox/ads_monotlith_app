@@ -1,0 +1,216 @@
+@page "{id:int}"
+@model RetailMonolith.Pages.Products.DetailsModel
+@{
+    ViewData["Title"] = Model.Product?.Name ?? "Product Details";
+}
+
+@if (Model.Product == null)
+{
+    <div class="container mt-5">
+        <div class="alert alert-warning">
+            <h4>Product Not Found</h4>
+            <p>The product you're looking for doesn't exist or is no longer available.</p>
+            <a asp-page="/Products/Index" class="btn btn-primary">Back to Products</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="container mt-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-page="/Index">Home</a></li>
+                <li class="breadcrumb-item"><a asp-page="/Products/Index">Products</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@Model.Product.Name</li>
+            </ol>
+        </nav>
+
+        <div class="row">
+            <!-- Product Image -->
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                    <img src="@Model.GetImageForCategory(Model.Product.Category)" 
+                         class="card-img-top" 
+                         alt="@Model.Product.Name" 
+                         style="object-fit: cover; height: 500px;">
+                </div>
+            </div>
+
+            <!-- Product Details -->
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <span class="badge bg-secondary">@Model.Product.Category</span>
+                    <span class="badge bg-info text-dark">SKU: @Model.Product.Sku</span>
+                </div>
+
+                <h1 class="display-5 mb-3">@Model.Product.Name</h1>
+
+                <div class="mb-4">
+                    <h2 class="text-primary">@Model.Product.Price.ToString("C") @Model.Product.Currency</h2>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.Product.Description))
+                {
+                    <div class="mb-4">
+                        <h5>Description</h5>
+                        <p class="lead">@Model.Product.Description</p>
+                    </div>
+                }
+
+                <!-- Product Features -->
+                <div class="mb-4">
+                    <h5>Product Features</h5>
+                    <ul class="list-unstyled">
+                        @switch (Model.Product.Category)
+                        {
+                            case "Apparel":
+                                <li><i class="bi bi-check-circle text-success"></i> Premium fabric blend</li>
+                                <li><i class="bi bi-check-circle text-success"></i> Modern fit and design</li>
+                                <li><i class="bi bi-check-circle text-success"></i> Easy care instructions</li>
+                                <li><i class="bi bi-check-circle text-success"></i> Multiple sizes available</li>
+                                break;
+                            case "Footwear":
+                                <li><i class="bi bi-check-circle text-success"></i> Cushioned insole</li>
+                                <li><i class="bi bi-check-circle text-success"></i> Breathable materials</li>
+                                <li><i class="bi bi-check-circle text-success"></i> Excellent traction</li>
+                                <li><i class="bi bi-check-circle text-success"></i> All-day comfort</li>
+                                break;
+                            case "Accessories":
+                                <li><i class="bi bi-check-circle text-success"></i> Quality materials</li>
+                                <li><i class="bi bi-check-circle text-success"></i> Versatile design</li>
+                                <li><i class="bi bi-check-circle text-success"></i> Attention to detail</li>
+                                <li><i class="bi bi-check-circle text-success"></i> Complements any outfit</li>
+                                break;
+                            case "Electronics":
+                                <li><i class="bi bi-check-circle text-success"></i> Advanced features</li>
+                                <li><i class="bi bi-check-circle text-success"></i> User-friendly interface</li>
+                                <li><i class="bi bi-check-circle text-success"></i> Energy efficient</li>
+                                <li><i class="bi bi-check-circle text-success"></i> Warranty included</li>
+                                break;
+                            case "Home":
+                                <li><i class="bi bi-check-circle text-success"></i> Durable construction</li>
+                                <li><i class="bi bi-check-circle text-success"></i> Easy to maintain</li>
+                                <li><i class="bi bi-check-circle text-success"></i> Functional design</li>
+                                <li><i class="bi bi-check-circle text-success"></i> Enhances living space</li>
+                                break;
+                            case "Beauty":
+                                <li><i class="bi bi-check-circle text-success"></i> Premium ingredients</li>
+                                <li><i class="bi bi-check-circle text-success"></i> Dermatologist tested</li>
+                                <li><i class="bi bi-check-circle text-success"></i> Cruelty-free</li>
+                                <li><i class="bi bi-check-circle text-success"></i> Eco-friendly packaging</li>
+                                break;
+                        }
+                    </ul>
+                </div>
+
+                <!-- Stock Status -->
+                <div class="mb-4">
+                    @if (Model.InventoryQuantity > 10)
+                    {
+                        <span class="badge bg-success"><i class="bi bi-check-circle"></i> In Stock (@Model.InventoryQuantity available)</span>
+                    }
+                    else if (Model.InventoryQuantity > 0)
+                    {
+                        <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> Low Stock (@Model.InventoryQuantity remaining)</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Out of Stock</span>
+                    }
+                </div>
+
+                <!-- Add to Cart Form -->
+                @if (Model.InventoryQuantity > 0)
+                {
+                    <form method="post">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-cart-plus"></i> Add to Cart
+                            </button>
+                        </div>
+                    </form>
+                }
+                else
+                {
+                    <button class="btn btn-secondary btn-lg w-100" disabled>
+                        <i class="bi bi-x-circle"></i> Out of Stock
+                    </button>
+                }
+
+                <div class="mt-3">
+                    <a asp-page="/Products/Index" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Products
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Information -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <ul class="nav nav-tabs" id="productTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="specs-tab" data-bs-toggle="tab" data-bs-target="#specs" type="button" role="tab">
+                            Specifications
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="shipping-tab" data-bs-toggle="tab" data-bs-target="#shipping" type="button" role="tab">
+                            Shipping
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="returns-tab" data-bs-toggle="tab" data-bs-target="#returns" type="button" role="tab">
+                            Returns
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content p-4 border border-top-0" id="productTabsContent">
+                    <div class="tab-pane fade show active" id="specs" role="tabpanel">
+                        <h5>Product Specifications</h5>
+                        <table class="table">
+                            <tbody>
+                                <tr>
+                                    <th scope="row">Product ID</th>
+                                    <td>@Model.Product.Id</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">SKU</th>
+                                    <td>@Model.Product.Sku</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Category</th>
+                                    <td>@Model.Product.Category</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Price</th>
+                                    <td>@Model.Product.Price.ToString("C") @Model.Product.Currency</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Availability</th>
+                                    <td>@(Model.Product.IsActive ? "Active" : "Discontinued")</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="tab-pane fade" id="shipping" role="tabpanel">
+                        <h5>Shipping Information</h5>
+                        <p><i class="bi bi-truck"></i> <strong>Standard Delivery:</strong> 3-5 business days - FREE on orders over £50</p>
+                        <p><i class="bi bi-lightning-fill"></i> <strong>Express Delivery:</strong> 1-2 business days - £9.99</p>
+                        <p><i class="bi bi-geo-alt"></i> <strong>Same Day Delivery:</strong> Available in select areas - £14.99</p>
+                        <hr>
+                        <p class="text-muted">Orders placed before 2PM are processed the same day. Track your order anytime in your account dashboard.</p>
+                    </div>
+                    <div class="tab-pane fade" id="returns" role="tabpanel">
+                        <h5>Returns & Refunds</h5>
+                        <p><i class="bi bi-arrow-counterclockwise"></i> <strong>30-Day Returns:</strong> Return within 30 days for a full refund</p>
+                        <p><i class="bi bi-shield-check"></i> <strong>Easy Process:</strong> Simple online return process with prepaid shipping label</p>
+                        <p><i class="bi bi-cash-coin"></i> <strong>Refund Timeline:</strong> Refunds processed within 5-7 business days</p>
+                        <hr>
+                        <p class="text-muted">Items must be in original condition with tags attached. Some exclusions may apply.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
