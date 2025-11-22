@@ -259,6 +259,46 @@ ApplyAuthorizationIfConfigured(
     "CustomerAccess"
 );
 
+ApplyAuthorizationIfConfigured(
+    app.MapDelete("/api/cart/{customerId}/items/{sku}", async (string customerId, string sku, ICartService cart, ClaimsPrincipal user) =>
+    {
+        // Validate that the authenticated user matches the customerId (only if Azure AD is configured)
+        if (isAzureAdConfigured)
+        {
+            var authenticatedUserId = user.Identity?.Name;
+            if (authenticatedUserId != customerId)
+            {
+                return Results.Forbid();
+            }
+        }
+        
+        await cart.RemoveFromCartAsync(customerId, sku);
+        return Results.Ok();
+    }),
+    isAzureAdConfigured,
+    "CustomerAccess"
+);
+
+ApplyAuthorizationIfConfigured(
+    app.MapDelete("/api/cart/{customerId}", async (string customerId, ICartService cart, ClaimsPrincipal user) =>
+    {
+        // Validate that the authenticated user matches the customerId (only if Azure AD is configured)
+        if (isAzureAdConfigured)
+        {
+            var authenticatedUserId = user.Identity?.Name;
+            if (authenticatedUserId != customerId)
+            {
+                return Results.Forbid();
+            }
+        }
+        
+        await cart.ClearCartAsync(customerId);
+        return Results.Ok();
+    }),
+    isAzureAdConfigured,
+    "CustomerAccess"
+);
+
 // Products API surface for decomposition
 ApplyAuthorizationIfConfigured(
     app.MapGet("/api/products", async (AppDbContext db) =>

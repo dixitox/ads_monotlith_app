@@ -16,7 +16,7 @@ namespace RetailMonolith.Pages.Cart
         }
 
         // Decomposed: Cart data now comes from the Cart API instead of direct database access
-        public List<(string Name, int Quantity, decimal Price)> Lines { get; set; } = new(); 
+        public List<(string Name, int Quantity, decimal Price, string Sku)> Lines { get; set; } = new(); 
 
         public decimal Total => Lines.Sum(line => line.Price * line.Quantity);
 
@@ -27,7 +27,7 @@ namespace RetailMonolith.Pages.Cart
             var customerId = User.Identity?.Name ?? "guest";
             var cart = await _cartApiClient.GetCartAsync(customerId);
             Lines = cart.Lines
-                .Select(line => (line.Name, line.Quantity, line.UnitPrice))
+                .Select(line => (line.Name, line.Quantity, line.UnitPrice, line.Sku))
                 .ToList();
         }
     }

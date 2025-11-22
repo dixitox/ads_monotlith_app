@@ -159,10 +159,7 @@ Guidelines:
 Interactive Features:
 - When mentioning a specific product, ALWAYS add [PRODUCT:id:ProductName] to create a clickable link
 - ALWAYS add [ADD_TO_CART:id:ProductName] button after EVERY product mention so customers can add to cart easily
-- You can also add [PLACE_ORDER:id:ProductName] to create a ""Place Order"" button
-- When recommending multiple products and want to offer bulk actions, use:
-  * [ADD_ALL_TO_CART:id1,id2,id3] to add all products to cart at once
-  * [ORDER_ALL:id1,id2,id3] to place order for all products at once
+- When recommending 3 OR MORE products in a single response, ALWAYS add [ADD_ALL_TO_CART:id1,id2,id3,...] at the end
 - CRITICAL: Every product reference MUST include both [PRODUCT:id:ProductName] and [ADD_TO_CART:id:ProductName]
 - Use these features in EVERY response that mentions products
 - Format: ""Check out [PRODUCT:5:Product Name] [ADD_TO_CART:5:Product Name]""
@@ -172,12 +169,18 @@ Examples:
 - ""The [PRODUCT:3:MacBook Air] [ADD_TO_CART:3:MacBook Air] is on sale for £1,199.""
 - ""Check out this [PRODUCT:8:Gaming Headset Pro] [ADD_TO_CART:8:Gaming Headset Pro] - great reviews!""
 - ""We have the [PRODUCT:12:iPhone 14] [ADD_TO_CART:12:iPhone 14] for £799 and [PRODUCT:15:Samsung Galaxy S23] [ADD_TO_CART:15:Samsung Galaxy S23] for £699.""
-- ""Here are 3 great options: [PRODUCT:5:Dell XPS 13] [ADD_TO_CART:5:Dell XPS 13], [PRODUCT:8:MacBook Pro] [ADD_TO_CART:8:MacBook Pro], [PRODUCT:12:Surface Laptop] [ADD_TO_CART:12:Surface Laptop]. Or [ADD_ALL_TO_CART:5,8,12] [ORDER_ALL:5,8,12]""
-- ""Found 2 beauty products: [PRODUCT:20:Face Cream] [ADD_TO_CART:20:Face Cream] and [PRODUCT:25:Shampoo] [ADD_TO_CART:25:Shampoo]""
+- ""Here are 3 great options: [PRODUCT:5:Dell XPS 13] [ADD_TO_CART:5:Dell XPS 13], [PRODUCT:8:MacBook Pro] [ADD_TO_CART:8:MacBook Pro], [PRODUCT:12:Surface Laptop] [ADD_TO_CART:12:Surface Laptop] [ADD_ALL_TO_CART:5,8,12]""
+- ""Found 4 beauty products: [PRODUCT:20:Face Cream] [ADD_TO_CART:20:Face Cream], [PRODUCT:25:Shampoo] [ADD_TO_CART:25:Shampoo], [PRODUCT:30:Moisturizer] [ADD_TO_CART:30:Moisturizer], [PRODUCT:35:Serum] [ADD_TO_CART:35:Serum] [ADD_ALL_TO_CART:20,25,30,35]""
 
-IMPORTANT: 
-- Always use the format [PRODUCT:id:ProductName], [ADD_TO_CART:id:ProductName], and [PLACE_ORDER:id:ProductName] with actual product names
-- When recommending 2+ products, offer bulk actions with [ADD_ALL_TO_CART:id1,id2,...] and [ORDER_ALL:id1,id2,...]\n- For bulk actions, use comma-separated product IDs";
+CRITICAL RULES: 
+- EVERY product mention MUST include both [PRODUCT:id:ProductName] AND [ADD_TO_CART:id:ProductName]
+- Never mention a product without these two tags together
+- Use actual product names from the catalog, not generic names
+- When recommending 3 OR MORE products, ALWAYS add [ADD_ALL_TO_CART:id1,id2,id3,...] at the very end
+- For 1-2 products: Individual [ADD_TO_CART] buttons only
+- For 3+ products: Individual [ADD_TO_CART] buttons PLUS [ADD_ALL_TO_CART] at the end
+- Format example: ""I found [PRODUCT:5:Apparel Item 5] [ADD_TO_CART:5:Apparel Item 5] for £25.99""
+- Always include the add to cart button so customers can shop while chatting";
         }
     }
 }

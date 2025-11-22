@@ -445,18 +445,14 @@
         buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Adding...';
 
         try {
-            // Get customer ID from current user or use default
-            const customerId = 'default-customer'; // You can enhance this to get actual user ID
+            // Get customer ID from authenticated user
+            const customerId = window.currentUserId || 'default-customer';
             
-            const response = await fetch(`/api/cart/${customerId}/items`, {
+            const response = await fetch(`/api/cart/${customerId}/items?productId=${productId}&quantity=1`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    productId: parseInt(productId),
-                    quantity: 1
-                })
+                }
             });
 
             if (response.ok) {
@@ -486,92 +482,22 @@
         }
     }
 
-    async function handlePlaceOrder(productId, buttonElement) {
-        const originalHTML = buttonElement.innerHTML;
-        buttonElement.disabled = true;
-        buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Ordering...';
-
-        try {
-            // Get customer ID from current user or use default
-            const customerId = 'default-customer';
-            
-            // First, add to cart
-            const addToCartResponse = await fetch(`/api/cart/${customerId}/items`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    productId: parseInt(productId),
-                    quantity: 1
-                })
-            });
-
-            if (!addToCartResponse.ok) {
-                throw new Error('Failed to add to cart');
-            }
-
-            // Then, process checkout
-            const checkoutResponse = await fetch('/api/checkout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    customerId: customerId,
-                    paymentMethod: 'CreditCard',
-                    shippingAddress: 'Default Address'
-                })
-            });
-
-            if (checkoutResponse.ok) {
-                const order = await checkoutResponse.json();
-                buttonElement.innerHTML = '<i class="bi bi-check-circle"></i> Ordered!';
-                buttonElement.classList.add('btn-success');
-                
-                // Show success message with order details
-                addMessage(`✅ Order placed successfully! Order ID: ${order.orderId}. You can view your order in the Orders page.`, 'assistant');
-                
-                setTimeout(() => {
-                    buttonElement.innerHTML = originalHTML;
-                    buttonElement.disabled = false;
-                    buttonElement.classList.remove('btn-success');
-                }, 2000);
-            } else {
-                throw new Error('Failed to place order');
-            }
-        } catch (error) {
-            console.error('Error placing order:', error);
-            buttonElement.innerHTML = '<i class="bi bi-x-circle"></i> Failed';
-            addMessage('❌ Sorry, I couldn\'t place your order. Please try again or contact support.', 'assistant', true);
-            
-            setTimeout(() => {
-                buttonElement.innerHTML = originalHTML;
-                buttonElement.disabled = false;
-            }, 2000);
-        }
-    }
-
     async function handleAddAllToCart(productIds, buttonElement) {
         const originalHTML = buttonElement.innerHTML;
         buttonElement.disabled = true;
         buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Adding all...';
 
         try {
-            const customerId = 'default-customer';
+            const customerId = window.currentUserId || 'default-customer';
             const ids = productIds.split(',').map(id => parseInt(id.trim()));
             
             // Add all products to cart
             const promises = ids.map(productId => 
-                fetch(`/api/cart/${customerId}/items`, {
+                fetch(`/api/cart/${customerId}/items?productId=${productId}&quantity=1`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        productId: productId,
-                        quantity: 1
-                    })
+                    }
                 })
             );
 
@@ -596,76 +522,6 @@
             console.error('Error adding all to cart:', error);
             buttonElement.innerHTML = '<i class="bi bi-x-circle"></i> Failed';
             addMessage('❌ Sorry, I couldn\'t add all products to cart. Please try adding them individually.', 'assistant', true);
-            
-            setTimeout(() => {
-                buttonElement.innerHTML = originalHTML;
-                buttonElement.disabled = false;
-            }, 2000);
-        }
-    }
-
-    async function handleOrderAll(productIds, buttonElement) {
-        const originalHTML = buttonElement.innerHTML;
-        buttonElement.disabled = true;
-        buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Ordering all...';
-
-        try {
-            const customerId = 'default-customer';
-            const ids = productIds.split(',').map(id => parseInt(id.trim()));
-            
-            // Add all products to cart first
-            const promises = ids.map(productId => 
-                fetch(`/api/cart/${customerId}/items`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        productId: productId,
-                        quantity: 1
-                    })
-                })
-            );
-
-            const responses = await Promise.all(promises);
-            const allSucceeded = responses.every(r => r.ok);
-
-            if (!allSucceeded) {
-                throw new Error('Some products failed to add to cart');
-            }
-
-            // Then process checkout
-            const checkoutResponse = await fetch('/api/checkout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    customerId: customerId,
-                    paymentMethod: 'CreditCard',
-                    shippingAddress: 'Default Address'
-                })
-            });
-
-            if (checkoutResponse.ok) {
-                const order = await checkoutResponse.json();
-                buttonElement.innerHTML = '<i class="bi bi-check-circle"></i> All Ordered!';
-                buttonElement.classList.add('btn-success');
-                
-                addMessage(`✅ Order placed successfully for all ${ids.length} products! Order ID: ${order.orderId}. View in Orders page.`, 'assistant');
-                
-                setTimeout(() => {
-                    buttonElement.innerHTML = originalHTML;
-                    buttonElement.disabled = false;
-                    buttonElement.classList.remove('btn-success');
-                }, 2000);
-            } else {
-                throw new Error('Failed to place order');
-            }
-        } catch (error) {
-            console.error('Error ordering all:', error);
-            buttonElement.innerHTML = '<i class="bi bi-x-circle"></i> Failed';
-            addMessage('❌ Sorry, I couldn\'t place your order for all products. Please try ordering individually.', 'assistant', true);
             
             setTimeout(() => {
                 buttonElement.innerHTML = originalHTML;
