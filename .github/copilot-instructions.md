@@ -93,6 +93,55 @@ dotnet run  # This runs RetailMonolith from root
 - Test Documentation: `/Tests/README.md`
 - Authentication Setup: `/RetailDecomposed/AUTHENTICATION_SETUP.md`
 
+## Production Deployment Considerations
+
+### Configuration Management
+- **Development**: Uses `appsettings.Development.json` with local settings
+- **Production**: Uses `appsettings.json` as base configuration
+- **Best Practice**: Override production settings using Azure App Service Configuration or environment variables (never commit secrets to source control)
+
+### Production Settings to Configure
+
+1. **Azure AD Authentication**:
+   - Update `AzureAd:TenantId`, `AzureAd:ClientId`, `AzureAd:Domain` in Azure App Service Configuration
+   - Use production Azure AD app registration
+
+2. **Azure AI Foundry**:
+   - Update `AzureAI:Endpoint` to production Azure AI resource
+   - Enable Managed Identity on App Service and assign "Cognitive Services OpenAI User" role
+   - Remove API keys (use Entra ID authentication)
+
+3. **Database Connection**:
+   - Production uses Azure SQL Database (not LocalDB)
+   - Recommended: Use Managed Identity for database access:
+     ```
+     Server=your-server.database.windows.net;Database=ApplicationDB;Authentication=Active Directory Default;
+     ```
+   - Alternative: Store connection string in Azure Key Vault or App Service Configuration
+
+4. **Managed Identity Setup**:
+   - Enable System-Assigned or User-Assigned Managed Identity on Azure App Service/Container App
+   - Assign required roles:
+     - `Cognitive Services OpenAI User` (for Azure AI)
+     - `SQL DB Contributor` or custom role (for database)
+
+5. **Security**:
+   - Set `DetailedErrors: false` in production
+   - Configure appropriate CORS policies
+   - Use HTTPS only
+   - Review `AllowedHosts` setting
+
+### Deployment Checklist
+- [ ] Configure Azure App Service settings (don't hardcode in appsettings.json)
+- [ ] Enable and configure Managed Identity
+- [ ] Assign RBAC roles for Azure AI and SQL Database
+- [ ] Update database connection string for Azure SQL
+- [ ] Configure production Azure AD app registration
+- [ ] Test authentication flow in production environment
+- [ ] Verify AI Copilot connectivity with production endpoint
+- [ ] Set up Application Insights for monitoring
+- [ ] Configure logging levels (reduce verbosity in production)
+
 ---
 
 **Remember**: Unless explicitly stated otherwise by the user, ALL work is on **RetailDecomposed** running at **http://localhost:6068**.
