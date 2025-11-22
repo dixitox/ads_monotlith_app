@@ -43,7 +43,6 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
             {
                 options.DefaultAuthenticateScheme = FakeAuthenticationHandler.AuthenticationScheme;
                 options.DefaultChallengeScheme = FakeAuthenticationHandler.AuthenticationScheme;
-                options.DefaultScheme = FakeAuthenticationHandler.AuthenticationScheme;
             })
             .AddScheme<AuthenticationSchemeOptions, FakeAuthenticationHandler>(
                 FakeAuthenticationHandler.AuthenticationScheme, options => { });
