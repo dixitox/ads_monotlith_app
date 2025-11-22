@@ -9,23 +9,118 @@
 
 @if (!Model.Lines.Any())
 {
-    <p> Cart is empty.</p>
+    <div class="alert alert-info">
+        <i class="bi bi-cart-x"></i> Your cart is empty. <a asp-page="/Products/Index">Browse products</a>
+    </div>
 }
 else
 {
-    <table class="table">
-        <thead><tr><th>Item</th><th>Quantity</th><th>Unit</th><th>Line</th></tr></thead>
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Item</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Line Total</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
         <tbody>
             @foreach (var line in Model.Lines)
-        {
-            <tr>
-                <td>@line.Name</td>
-                <td>@line.Quantity</td>
-                <td>@line.Price.ToString("c")</td>
-            </tr>
+            {
+                <tr>
+                    <td>@line.Name</td>
+                    <td>@line.Quantity</td>
+                    <td>@line.Price.ToString("C")</td>
+                    <td>@((line.Price * line.Quantity).ToString("C"))</td>
+                    <td>
+                        <button class="btn btn-sm btn-danger remove-item-btn" data-sku="@line.Sku" data-name="@line.Name">
+                            <i class="bi bi-trash"></i> Remove
+                        </button>
+                    </td>
+                </tr>
             }
-
+        </tbody>
     </table>
-    <h4>Total: @Model.Total.ToString("C")</h4>
-    <a class="btn btn-success" href="/Checkout"> Proceed to Checkout</a>
+    <div class="d-flex justify-content-end mb-3">
+        <button class="btn btn-outline-danger" id="clear-cart-btn">
+            <i class="bi bi-trash3"></i> Clear Cart
+        </button>
+    </div>
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <h4 class="mb-0">Total: @Model.Total.ToString("C")</h4>
+        <a class="btn btn-success btn-lg" href="/Checkout">
+            <i class="bi bi-credit-card"></i> Proceed to Checkout
+        </a>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const removeButtons = document.querySelectorAll('.remove-item-btn');
+            
+            removeButtons.forEach(button => {
+                button.addEventListener('click', async function() {
+                    const sku = this.getAttribute('data-sku');
+                    const name = this.getAttribute('data-name');
+                    const customerId = '@User.Identity?.Name';
+                    
+                    if (!confirm(`Remove "${name}" from cart?`)) {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`/api/cart/${encodeURIComponent(customerId)}/items/${encodeURIComponent(sku)}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            // Reload the page to show updated cart
+                            window.location.reload();
+                        } else {
+                            alert('Failed to remove item from cart. Please try again.');
+                        }
+                    } catch (error) {
+                        console.error('Error removing item:', error);
+                        alert('An error occurred. Please try again.');
+                    }
+                });
+            });
+            
+            // Clear Cart button handler
+            const clearCartBtn = document.getElementById('clear-cart-btn');
+            if (clearCartBtn) {
+                clearCartBtn.addEventListener('click', async function() {
+                    const customerId = '@User.Identity?.Name';
+                    
+                    if (!confirm('Are you sure you want to remove all items from your cart?')) {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`/api/cart/${encodeURIComponent(customerId)}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            // Reload the page to show empty cart
+                            window.location.reload();
+                        } else {
+                            alert('Failed to clear cart. Please try again.');
+                        }
+                    } catch (error) {
+                        console.error('Error clearing cart:', error);
+                        alert('An error occurred. Please try again.');
+                    }
+                });
+            }
+        });
+    </script>
 }

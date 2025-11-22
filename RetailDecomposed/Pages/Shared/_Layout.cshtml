@@ -6,8 +6,10 @@
     <title>@ViewData["Title"] - RetailDecomposed</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/side-chat.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    @await RenderSectionAsync("Styles", required: false)
 
 </head>
 <body>
@@ -43,11 +45,9 @@
                         </li>
 
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/UserInfo">User Info</a>
-                        </li>
-
-                        <li class="nav-item">
-                        <a class="nav-link text-dark" asp-area="" asp-page="/Privacy">Privacy</a>
+                            <button class="nav-link text-dark btn btn-link" id="toggleSideChat" type="button">
+                                <i class="bi bi-robot"></i> AI Assistant
+                            </button>
                         </li>
                     </ul>
                     <partial name="_LoginPartial" />
@@ -61,6 +61,78 @@
         </main>
     </div>
 
+    <!-- Side Chat Panel -->
+    <div id="sideChatPanel" class="side-chat-panel">
+        <div class="side-chat-header">
+            <h5 class="mb-0">
+                <i class="bi bi-robot"></i> AI Shopping Assistant
+            </h5>
+            <div class="d-flex gap-2">
+                <button id="pinSideChat" class="btn-pin-chat" aria-label="Pin" title="Pin chat (keeps open while browsing)">
+                    <i class="bi bi-pin"></i>
+                </button>
+                <button id="closeSideChat" class="btn-close-chat" aria-label="Close">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+        <div class="prompt-suggestions">
+            <span class="prompt-chip" data-prompt="Show me Electronics under £50">
+                <i class="bi bi-laptop"></i> Electronics under £50
+            </span>
+            <span class="prompt-chip" data-prompt="What Beauty products do you have?">
+                <i class="bi bi-palette"></i> Beauty products
+            </span>
+            <span class="prompt-chip" data-prompt="Compare Apparel and Footwear items">
+                <i class="bi bi-cart"></i> Compare categories
+            </span>
+            <span class="prompt-chip" data-prompt="Show all Home and Accessories items">
+                <i class="bi bi-house"></i> Home & Accessories
+            </span>
+        </div>
+        <div class="side-chat-body">
+            <div id="sideChatContainer" class="side-chat-messages">
+                <!-- Welcome message -->
+                <div class="chat-message assistant-message">
+                    <div class="message-avatar">
+                        <i class="bi bi-robot"></i>
+                    </div>
+                    <div class="message-bubble">
+                        👋 Hello! I'm your AI shopping assistant. I can help you find products and answer questions about our catalog.
+                        <br><br>
+                        Try clicking a suggestion above or ask me anything!
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="token-counter" id="tokenCounter">
+            <span class="tokens">0</span> tokens used this session
+        </div>
+        <div class="side-chat-footer">
+            <div class="chat-controls">
+                <button id="clearChatBtn" class="btn-clear-chat">
+                    <i class="bi bi-trash"></i> Clear Chat
+                </button>
+                <small class="text-muted">📌 Pinned chats stay open</small>
+            </div>
+            <div class="input-area">
+                <form id="sideChatForm" class="side-chat-input-form">
+                <input 
+                    type="text" 
+                    id="sideChatInput" 
+                    class="form-control" 
+                    placeholder="Ask me anything..." 
+                    autocomplete="off"
+                    required>
+                <button type="submit" class="btn btn-primary" id="sideChatSend">
+                    <i class="bi bi-send-fill"></i>
+                </button>
+            </form>
+            </div>
+        </div>
+    </div>
+    <div id="sideChatOverlay" class="side-chat-overlay"></div>
+
     <footer class="border-top footer text-muted">
         <div class="container">
             &copy; 2025 - RetailDecomposed - <a asp-area="" asp-page="/Privacy">Privacy</a>
@@ -68,8 +140,13 @@
     </footer>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script>
+        // Inject current user ID for cart operations (properly encoded to prevent XSS)
+        window.currentUserId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(User.Identity?.Name));
+    </script>
+    <script src="~/js/side-chat.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>

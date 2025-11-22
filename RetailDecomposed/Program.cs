@@ -41,6 +41,12 @@ var isAzureAdConfigured = !string.IsNullOrEmpty(clientId) &&
                           !string.IsNullOrEmpty(tenantId) &&
                           Guid.TryParse(tenantId, out _);
 
+// Determine if authorization should be required
+// Priority: Explicit configuration > Azure AD configured > Testing environment
+var requireAuthorizationConfig = builder.Configuration.GetValue<bool?>("RequireAuthorization");
+var isTesting = builder.Environment.IsEnvironment("Testing");
+var requireAuthorization = requireAuthorizationConfig ?? (isAzureAdConfigured || isTesting);
+
 if (isAzureAdConfigured)
 {
     Console.WriteLine($"Using Azure AD authentication with TenantId: {tenantId}");
@@ -83,14 +89,28 @@ builder.Services.AddAuthorization(options =>
 // Add MicrosoftIdentityUI for sign-in/sign-out when Azure AD is configured
 if (isAzureAdConfigured)
 {
-    builder.Services.AddRazorPages()
+    builder.Services.AddRazorPages(options =>
+    {
+        // Require authentication for specific pages when authorization is required
+        if (requireAuthorization)
+        {
+            options.Conventions.AuthorizePage("/Copilot/Index", "CustomerAccess");
+        }
+    })
         .AddMicrosoftIdentityUI();
     // Add controllers for MicrosoftIdentity UI
     builder.Services.AddControllers();
 }
 else
 {
-    builder.Services.AddRazorPages();
+    builder.Services.AddRazorPages(options =>
+    {
+        // Require authentication for specific pages when authorization is required
+        if (requireAuthorization)
+        {
+            options.Conventions.AuthorizePage("/Copilot/Index", "CustomerAccess");
+        }
+    });
 }
 
 // Add antiforgery services
@@ -148,6 +168,9 @@ builder.Services.AddHttpClient<RetailDecomposed.Services.IProductsApiClient, Ret
 })
 .AddHttpMessageHandler<RetailDecomposed.Services.CookiePropagatingHandler>()
 .ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
+
+// Register AI Copilot service (depends on IProductsApiClient)
+builder.Services.AddScoped<RetailDecomposed.Services.ICopilotService, RetailDecomposed.Services.CopilotService>();
 
 // Register Orders API Client for decomposed Orders module
 builder.Services.AddHttpClient<RetailDecomposed.Services.IOrdersApiClient, RetailDecomposed.Services.OrdersApiClient>(client =>
@@ -219,8 +242,8 @@ static RouteHandlerBuilder ApplyAuthorizationIfConfigured(RouteHandlerBuilder bu
 ApplyAuthorizationIfConfigured(
     app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart, ClaimsPrincipal user) =>
     {
-        // Validate that the authenticated user matches the customerId (only if Azure AD is configured)
-        if (isAzureAdConfigured)
+        // Validate that the authenticated user matches the customerId (only if authorization is required)
+        if (requireAuthorization)
         {
             var authenticatedUserId = user.Identity?.Name;
             if (authenticatedUserId != customerId)
@@ -232,15 +255,15 @@ ApplyAuthorizationIfConfigured(
         var cartData = await cart.GetCartWithLinesAsync(customerId);
         return Results.Ok(cartData);
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
     "CustomerAccess"
 );
 
 ApplyAuthorizationIfConfigured(
     app.MapPost("/api/cart/{customerId}/items", async (string customerId, int productId, int quantity, ICartService cart, ClaimsPrincipal user) =>
     {
-        // Validate that the authenticated user matches the customerId (only if Azure AD is configured)
-        if (isAzureAdConfigured)
+        // Validate that the authenticated user matches the customerId (only if authorization is required)
+        if (requireAuthorization)
         {
             var authenticatedUserId = user.Identity?.Name;
             if (authenticatedUserId != customerId)
@@ -252,7 +275,47 @@ ApplyAuthorizationIfConfigured(
         await cart.AddToCartAsync(customerId, productId, quantity);
         return Results.Ok();
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
+    "CustomerAccess"
+);
+
+ApplyAuthorizationIfConfigured(
+    app.MapDelete("/api/cart/{customerId}/items/{sku}", async (string customerId, string sku, ICartService cart, ClaimsPrincipal user) =>
+    {
+        // Validate that the authenticated user matches the customerId (only if authorization is required)
+        if (requireAuthorization)
+        {
+            var authenticatedUserId = user.Identity?.Name;
+            if (authenticatedUserId != customerId)
+            {
+                return Results.Forbid();
+            }
+        }
+        
+        await cart.RemoveFromCartAsync(customerId, sku);
+        return Results.Ok();
+    }),
+    requireAuthorization,
+    "CustomerAccess"
+);
+
+ApplyAuthorizationIfConfigured(
+    app.MapDelete("/api/cart/{customerId}", async (string customerId, ICartService cart, ClaimsPrincipal user) =>
+    {
+        // Validate that the authenticated user matches the customerId (only if authorization is required)
+        if (requireAuthorization)
+        {
+            var authenticatedUserId = user.Identity?.Name;
+            if (authenticatedUserId != customerId)
+            {
+                return Results.Forbid();
+            }
+        }
+        
+        await cart.ClearCartAsync(customerId);
+        return Results.Ok();
+    }),
+    requireAuthorization,
     "CustomerAccess"
 );
 
@@ -263,7 +326,7 @@ ApplyAuthorizationIfConfigured(
         var products = await db.Products.Where(p => p.IsActive).ToListAsync();
         return Results.Ok(products);
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
     "CustomerAccess"
 );
 
@@ -275,7 +338,7 @@ ApplyAuthorizationIfConfigured(
             return Results.NotFound();
         return Results.Ok(product);
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
     "CustomerAccess"
 );
 
@@ -292,8 +355,8 @@ ApplyAuthorizationIfConfigured(
         
         IQueryable<RetailMonolith.Models.Order> query = db.Orders.Include(o => o.Lines);
         
-        // Only filter by user if Azure AD is configured and user is not admin
-        if (isAzureAdConfigured && !isAdmin && !string.IsNullOrEmpty(userId))
+        // Only filter by user if authorization is required and user is not admin
+        if (requireAuthorization && !isAdmin && !string.IsNullOrEmpty(userId))
         {
             logger.LogInformation("Filtering orders for user: {UserId}", userId);
             query = query.Where(o => o.CustomerId == userId);
@@ -307,7 +370,7 @@ ApplyAuthorizationIfConfigured(
         logger.LogInformation("Returning {OrderCount} orders", orders.Count);
         return Results.Ok(orders);
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
     "CustomerAccess"
 );
 
@@ -321,7 +384,7 @@ ApplyAuthorizationIfConfigured(
             return Results.NotFound();
         return Results.Ok(order);
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
     "CustomerAccess"
 );
 
@@ -339,7 +402,35 @@ ApplyAuthorizationIfConfigured(
             return Results.BadRequest(new { error = ex.Message });
         }
     }),
-    isAzureAdConfigured,
+    requireAuthorization,
+    "CustomerAccess"
+);
+
+// AI Copilot Chat API
+ApplyAuthorizationIfConfigured(
+    app.MapPost("/api/chat", async (ChatRequest request, RetailDecomposed.Services.ICopilotService copilotService) =>
+    {
+        if (string.IsNullOrWhiteSpace(request.Message))
+        {
+            return Results.BadRequest(new { error = "Message cannot be empty" });
+        }
+
+        try
+        {
+            var response = await copilotService.GetChatResponseAsync(
+                request.Message,
+                request.ConversationHistory);
+            
+            return Results.Ok(new { response });
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem(
+                detail: "An error occurred processing your request",
+                statusCode: 500);
+        }
+    }),
+    requireAuthorization,
     "CustomerAccess"
 );
 
@@ -373,6 +464,10 @@ Console.ForegroundColor = ConsoleColor.Yellow;
 Console.WriteLine("  ┌─ Checkout API");
 Console.ResetColor();
 Console.WriteLine("  │  └─ POST /api/checkout        → Process checkout");
+Console.ForegroundColor = ConsoleColor.Yellow;
+Console.WriteLine("  ┌─ AI Copilot API");
+Console.ResetColor();
+Console.WriteLine("  │  └─ POST /api/chat            → Chat with AI assistant");
 Console.WriteLine("\n" + new string('=', 80) + "\n");
 
 app.Run();
@@ -415,6 +510,7 @@ public class NoAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 
 // DTOs for API endpoints
 record CheckoutRequest(string CustomerId, string PaymentToken);
+record ChatRequest(string Message, List<RetailDecomposed.Services.ChatMessage>? ConversationHistory);
 
 // Make Program class accessible to test projects
 namespace RetailDecomposed

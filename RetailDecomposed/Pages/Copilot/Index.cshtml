@@ -1,0 +1,82 @@
+@page
+@model RetailDecomposed.Pages.Copilot.IndexModel
+@{
+    ViewData["Title"] = "AI Shopping Assistant";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-robot"></i> AI Shopping Assistant
+                    </h4>
+                    <small>Ask me anything about our products!</small>
+                </div>
+                <div class="card-body p-0">
+                    <!-- Chat Messages Container -->
+                    <div id="chatContainer" class="chat-container p-3">
+                        <!-- Welcome message -->
+                        <div class="message assistant-message">
+                            <div class="message-avatar">
+                                <i class="bi bi-robot"></i>
+                            </div>
+                            <div class="message-content">
+                                <div class="message-text">
+                                    👋 Hello! I'm your AI shopping assistant. I can help you find the perfect products from our catalog.
+                                    <br><br>
+                                    Try asking me things like:
+                                    <ul class="mb-0">
+                                        <li>"What laptops do you have?"</li>
+                                        <li>"Show me wireless headphones under $100"</li>
+                                        <li>"What's the best phone for photography?"</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Input Area -->
+                    <div class="chat-input-area">
+                        <form id="chatForm" class="d-flex align-items-center p-3 border-top">
+                            <input 
+                                type="text" 
+                                id="messageInput" 
+                                class="form-control me-2" 
+                                placeholder="Ask me about products..." 
+                                autocomplete="off"
+                                required>
+                            <button type="submit" class="btn btn-primary" id="sendButton">
+                                <i class="bi bi-send-fill"></i> Send
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tips Card -->
+            <div class="card mt-3 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="bi bi-lightbulb"></i> Tips for Best Results
+                    </h6>
+                    <ul class="mb-0 small">
+                        <li>Be specific about what you're looking for (brand, price range, features)</li>
+                        <li>Ask follow-up questions to refine recommendations</li>
+                        <li>Mention your use case or preferences for personalized suggestions</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/copilot.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+}
+
+@section Scripts {
+    <script src="~/js/copilot.js" asp-append-version="true"></script>
+}

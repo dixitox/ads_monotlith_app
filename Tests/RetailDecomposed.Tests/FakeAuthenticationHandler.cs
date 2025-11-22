@@ -31,8 +31,8 @@ public class FakeAuthenticationHandler : AuthenticationHandler<AuthenticationSch
         // Check if authentication is requested via headers
         if (!Request.Headers.ContainsKey(UserIdHeader))
         {
-            // No authentication requested - return success with no claims (anonymous)
-            return Task.FromResult(AuthenticateResult.NoResult());
+            // No authentication requested - fail authentication to properly test auth scenarios
+            return Task.FromResult(AuthenticateResult.Fail("No authentication headers provided"));
         }
 
         // Build claims from headers

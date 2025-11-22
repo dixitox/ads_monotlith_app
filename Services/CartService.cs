@@ -57,6 +57,22 @@ namespace RetailMonolith.Services
             await _db.SaveChangesAsync(ct);
         }
 
+        public async Task RemoveFromCartAsync(string customerId, string sku, CancellationToken ct = default)
+        {
+            var cart = await _db.Carts
+                .Include(c => c.Lines)
+                .FirstOrDefaultAsync(c => c.CustomerId == customerId, ct);
+            
+            if (cart is null) return;
+
+            var line = cart.Lines.FirstOrDefault(l => l.Sku == sku);
+            if (line is not null)
+            {
+                cart.Lines.Remove(line);
+                await _db.SaveChangesAsync(ct);
+            }
+        }
+
         public async Task<Cart> GetCartWithLinesAsync(string customerId, CancellationToken ct = default)
         {
             //return cart if found otherwise return a new cart instance
