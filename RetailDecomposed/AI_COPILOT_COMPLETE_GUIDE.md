@@ -6,6 +6,16 @@ This guide provides a complete, step-by-step walkthrough for setting up and usin
 
 ---
 
+## 📚 Related Documentation
+
+- **[README.md](README.md)** - Project overview, getting started, and architecture
+- **[SEMANTIC_SEARCH_GUIDE.md](SEMANTIC_SEARCH_GUIDE.md)** - Semantic search implementation and RBAC setup (includes AI Copilot roles)
+- **[AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md)** - Azure Entra ID setup for user authentication
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Production deployment guide
+- **[TESTING_CHECKLIST.md](TESTING_CHECKLIST.md)** - Comprehensive testing guide
+
+---
+
 ## 📋 Table of Contents
 
 1. [Overview](#overview)

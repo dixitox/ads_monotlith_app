@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using RetailMonolith.Data;
-using RetailMonolith.Models;
+using RetailDecomposed.Data;
+using RetailDecomposed.Models;
 using RetailDecomposed.Services;
 using System.Threading.Tasks;
 

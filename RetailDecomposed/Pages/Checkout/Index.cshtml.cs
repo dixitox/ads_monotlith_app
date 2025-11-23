@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using RetailMonolith.Services;
+
 using RetailDecomposed.Services;
 using System.Threading.Tasks;
 

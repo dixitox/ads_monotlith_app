@@ -2,7 +2,7 @@ using Azure;
 using Azure.AI.OpenAI;
 using Azure.Identity;
 using OpenAI.Chat;
-using RetailMonolith.Models;
+using RetailDecomposed.Models;
 using System.Text;
 using System.Diagnostics;
 
