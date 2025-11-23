@@ -36,10 +36,9 @@ public static class ProductCategories
 
     /// <summary>
     /// Gets the properly cased category name if valid, null otherwise.
-    /// Also sanitizes the input to prevent OData injection by escaping single quotes.
     /// </summary>
     /// <param name="category">Category name to normalize.</param>
-    /// <returns>Properly cased and sanitized category name, or null if invalid.</returns>
+    /// <returns>Properly cased category name, or null if invalid.</returns>
     public static string? GetNormalizedCategory(string? category)
     {
         if (string.IsNullOrWhiteSpace(category))
@@ -52,9 +51,12 @@ public static class ProductCategories
     /// Escapes single quotes in a string for safe use in OData filter expressions.
     /// </summary>
     /// <param name="value">Value to escape.</param>
-    /// <returns>Escaped value safe for OData filters.</returns>
-    public static string EscapeForOData(string value)
+    /// <returns>Escaped value safe for OData filters, or empty string if value is null.</returns>
+    public static string EscapeForOData(string? value)
     {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+            
         // OData spec: single quotes in string literals must be escaped by doubling them
         return value.Replace("'", "''");
     }
