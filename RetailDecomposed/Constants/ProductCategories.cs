@@ -49,6 +49,8 @@ public static class ProductCategories
 
     /// <summary>
     /// Escapes single quotes in a string for safe use in OData filter expressions.
+    /// Note: This method is used in combination with GetNormalizedCategory which validates
+    /// against a whitelist of known categories. This escaping is a defense-in-depth measure.
     /// </summary>
     /// <param name="value">Value to escape.</param>
     /// <returns>Escaped value safe for OData filters, or empty string if value is null.</returns>
@@ -56,6 +58,13 @@ public static class ProductCategories
     {
         if (string.IsNullOrEmpty(value))
             return string.Empty;
+            
+        // Validate that the value contains only safe characters
+        // Since this is used with normalized categories, this is primarily a safety check
+        if (value.Any(c => char.IsControl(c) || c == '\\' || c == '"'))
+        {
+            throw new ArgumentException("Value contains invalid characters for OData filter", nameof(value));
+        }
             
         // OData spec: single quotes in string literals must be escaped by doubling them
         return value.Replace("'", "''");
