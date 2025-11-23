@@ -208,8 +208,14 @@ public class SearchApiTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task CreateIndex_ReturnsSuccess()
     {
+        // Arrange
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/search/create-index");
+        request.Headers.Add("X-Test-UserId", "admin-user-id");
+        request.Headers.Add("X-Test-UserName", "Admin User");
+        request.Headers.Add("X-Test-UserRoles", "Admin");
+
         // Act
-        var response = await _client.PostAsync("/api/search/create-index", null);
+        var response = await _client.SendAsync(request);
 
         // Assert
         // In test environment with mock service, should return success
@@ -222,8 +228,14 @@ public class SearchApiTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task IndexProducts_ReturnsSuccess()
     {
+        // Arrange
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/search/index");
+        request.Headers.Add("X-Test-UserId", "admin-user-id");
+        request.Headers.Add("X-Test-UserName", "Admin User");
+        request.Headers.Add("X-Test-UserRoles", "Admin");
+
         // Act
-        var response = await _client.PostAsync("/api/search/index", null);
+        var response = await _client.SendAsync(request);
 
         // Assert
         // In test environment with mock service, should return success
