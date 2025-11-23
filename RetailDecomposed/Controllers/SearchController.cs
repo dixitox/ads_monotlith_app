@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RetailDecomposed.Services;
 
@@ -26,6 +27,7 @@ public class SearchController : ControllerBase
     /// </summary>
     /// <returns>Success status.</returns>
     [HttpPost("create-index")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> CreateIndex()
     {
         try
@@ -43,7 +45,7 @@ public class SearchController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating search index");
-            return StatusCode(500, new { message = "Error creating search index", error = ex.Message });
+            return StatusCode(500, new { message = "Error creating search index" });
         }
     }
 
@@ -52,6 +54,7 @@ public class SearchController : ControllerBase
     /// </summary>
     /// <returns>Number of products indexed.</returns>
     [HttpPost("index")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> IndexProducts()
     {
         try
@@ -64,12 +67,13 @@ public class SearchController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error indexing products");
-            return StatusCode(500, new { message = "Error indexing products", error = ex.Message });
+            return StatusCode(500, new { message = "Error indexing products" });
         }
     }
 
     /// <summary>
     /// Performs semantic search on products using natural language query.
+    /// Note: Consider implementing rate limiting to control Azure OpenAI API costs and usage.
     /// </summary>
     /// <param name="query">Natural language search query.</param>
     /// <param name="top">Maximum number of results to return (default: 10).</param>
@@ -108,7 +112,7 @@ public class SearchController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error performing search");
-            return StatusCode(500, new { message = "Error performing search", error = ex.Message });
+            return StatusCode(500, new { message = "Error performing search" });
         }
     }
 
