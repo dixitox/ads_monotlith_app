@@ -6,6 +6,7 @@ using Azure.Search.Documents.Indexes;
 using Azure.Search.Documents.Indexes.Models;
 using Azure.Search.Documents.Models;
 using Microsoft.EntityFrameworkCore;
+using RetailDecomposed.Constants;
 using RetailDecomposed.Models;
 using RetailDecomposed.Data;
 
@@ -219,16 +220,18 @@ public class SemanticSearchService : ISemanticSearchService
             // Add category filter if provided
             if (!string.IsNullOrWhiteSpace(categoryFilter))
             {
-                // Validate category filter against whitelist to prevent OData filter injection
-                var validCategories = new[] { "Beauty", "Apparel", "Footwear", "Home", "Accessories", "Electronics" };
-                if (validCategories.Contains(categoryFilter, StringComparer.OrdinalIgnoreCase))
+                // Validate and normalize category filter against whitelist to prevent OData filter injection
+                var normalizedCategory = ProductCategories.GetNormalizedCategory(categoryFilter);
+                if (normalizedCategory != null)
                 {
-                    searchOptions.Filter = $"Category eq '{categoryFilter}'";
+                    // Escape the category value for safe use in OData filter
+                    var escapedCategory = ProductCategories.EscapeForOData(normalizedCategory);
+                    searchOptions.Filter = $"Category eq '{escapedCategory}'";
                 }
                 else
                 {
                     _logger.LogWarning("Invalid category filter attempted: {CategoryFilter}", categoryFilter);
-                    throw new ArgumentException($"Invalid category filter. Valid categories are: {string.Join(", ", validCategories)}", nameof(categoryFilter));
+                    throw new ArgumentException($"Invalid category filter. Valid categories are: {string.Join(", ", ProductCategories.All)}", nameof(categoryFilter));
                 }
             }
 
@@ -315,13 +318,17 @@ public class SemanticSearchService : ISemanticSearchService
             
             _logger.LogError(ex, "ClientResultException generating embeddings. Status: {Status}, Message: {Message}, Details: {Details}. Check: 1) Deployment '{Deployment}' exists, 2) Endpoint '{Endpoint}' is correct, 3) You have 'Cognitive Services OpenAI User' role", 
                 ex.Status, ex.Message, errorDetails, _embeddingDeploymentName, _configuration["AzureAI:Endpoint"]);
-            throw;
+            
+            // Return user-friendly error without exposing internal details
+            throw new InvalidOperationException("Unable to generate embeddings. Please contact support if this issue persists.", ex);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error generating embeddings for text: {Text}. Deployment: {Deployment}, Endpoint: {Endpoint}", 
                 text, _embeddingDeploymentName, _openAIClient.GetType().Name);
-            throw;
+            
+            // Return user-friendly error without exposing internal details
+            throw new InvalidOperationException("Unable to generate embeddings. Please contact support if this issue persists.", ex);
         }
     }
 }

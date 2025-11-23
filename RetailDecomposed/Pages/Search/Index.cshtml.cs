@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using RetailDecomposed.Constants;
 using RetailDecomposed.Services;
 
 namespace RetailDecomposed.Pages.Search;
@@ -24,7 +25,7 @@ public class IndexModel : PageModel
     public bool HasSearched { get; set; }
     public bool IsIndexing { get; set; }
     public string? ErrorMessage { get; set; }
-    public string[] Categories { get; } = new[] { "All", "Beauty", "Apparel", "Footwear", "Home", "Accessories", "Electronics" };
+    public string[] Categories { get; } = new[] { "All" }.Concat(ProductCategories.All).ToArray();
 
     public void OnGet()
     {
