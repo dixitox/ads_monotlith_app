@@ -84,22 +84,22 @@ public class ObservabilityTests : IClassFixture<DecomposedWebApplicationFactory>
     {
         // Arrange
         Activity? capturedActivity = null;
-        var listener = new ActivityListener
+        using (var listener = new ActivityListener
         {
             ShouldListenTo = source => source.Name.StartsWith("Microsoft.AspNetCore"),
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
             ActivityStarted = activity => capturedActivity = activity
-        };
-        ActivitySource.AddActivityListener(listener);
+        })
+        {
+            ActivitySource.AddActivityListener(listener);
 
-        // Act
-        var response = await _client.GetAsync("/");
+            // Act
+            await _client.GetAsync("/");
 
-        // Assert
-        Assert.NotNull(capturedActivity);
-        Assert.NotNull(capturedActivity.Id);
-        
-        listener.Dispose();
+            // Assert
+            Assert.NotNull(capturedActivity);
+            Assert.NotNull(capturedActivity.Id);
+        }
     }
 
     [Fact]
@@ -229,7 +229,7 @@ public class ObservabilityTests : IClassFixture<DecomposedWebApplicationFactory>
         
         Assert.Contains(tags, t => t.Key == "exception.type" && t.Value == "System.ArgumentNullException");
         Assert.Contains(tags, t => t.Key == "exception.message");
-        Assert.DoesNotContain(tags, t => t.Key == "exception.inner.type");
+        Assert.DoesNotContain(tags, t => t.Key == "exception.inner_type");
     }
 
     #endregion
@@ -319,55 +319,54 @@ public class ObservabilityTests : IClassFixture<DecomposedWebApplicationFactory>
     [Fact]
     public async Task MultipleRequests_Should_CapturePerformanceMetrics()
     {
-        // Arrange - Verify activities can track duration
-        var durations = new List<TimeSpan>();
-        
-        // Use ActivityListener to capture stopped activities
+        // Arrange - Use ActivityListener to capture stopped activities
         var stoppedActivities = new List<Activity>();
-        var listener = new ActivityListener
+        using (var listener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == "RetailDecomposed.Services.Products",
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
             ActivityStopped = activity => stoppedActivities.Add(activity)
-        };
-        ActivitySource.AddActivityListener(listener);
-        
-        for (int i = 0; i < 3; i++)
+        })
         {
-            using (var testActivity = TelemetryActivitySources.Products.StartActivity($"TestActivity{i}"))
+            ActivitySource.AddActivityListener(listener);
+        
+            for (int i = 0; i < 3; i++)
             {
-                Assert.NotNull(testActivity);
-                await Task.Delay(10); // Simulate work
-                // Duration is calculated when activity is stopped/disposed
+                using (var testActivity = TelemetryActivitySources.Products.StartActivity($"TestActivity{i}"))
+                {
+                    Assert.NotNull(testActivity);
+                    await Task.Delay(10); // Simulate work
+                    // Duration is calculated when activity is stopped/disposed
+                }
             }
-        }
         
-        // Wait briefly for listener callbacks
-        await Task.Delay(100);
+            // Wait briefly for listener callbacks
+            await Task.Delay(100);
         
-        // Extract durations from stopped activities
-        durations = stoppedActivities.Select(a => a.Duration).ToList();
+            // Extract durations from stopped activities
+            var durations = stoppedActivities.Select(a => a.Duration).ToList();
         
-        Assert.NotEmpty(durations);
-        Assert.All(durations, d => Assert.True(d.TotalMilliseconds >= 0));
+            Assert.NotEmpty(durations);
+            Assert.All(durations, d => Assert.True(d.TotalMilliseconds >= 0));
 
-        // Act - Make multiple requests to verify service performance
-        var responseTimes = new List<long>();
-        for (int i = 0; i < 5; i++)
-        {
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            var response = await _client.GetAsync("/api/products");
-            sw.Stop();
-            response.EnsureSuccessStatusCode();
-            responseTimes.Add(sw.ElapsedMilliseconds);
-        }
+            // Act - Make multiple requests to verify service performance
+            var responseTimes = new List<long>();
+            for (int i = 0; i < 5; i++)
+            {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                var response = await _client.GetAsync("/api/products");
+                sw.Stop();
+                response.EnsureSuccessStatusCode();
+                responseTimes.Add(sw.ElapsedMilliseconds);
+            }
 
-        // Assert - Verify all requests completed and performance was measured
-        Assert.Equal(5, responseTimes.Count);
-        Assert.All(durations, duration => Assert.True(duration.TotalMilliseconds > 0));
+            // Assert - Verify all requests completed and performance was measured
+            Assert.Equal(5, responseTimes.Count);
+            Assert.All(durations, duration => Assert.True(duration.TotalMilliseconds > 0));
         
-        var avgDuration = durations.Average(d => d.TotalMilliseconds);
-        Assert.True(avgDuration > 0, "Average request duration should be greater than 0");
+            var avgDuration = durations.Average(d => d.TotalMilliseconds);
+            Assert.True(avgDuration > 0, "Average request duration should be greater than 0");
+        }
     }
 
     #endregion
