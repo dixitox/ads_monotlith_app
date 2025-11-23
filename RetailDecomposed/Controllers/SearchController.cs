@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RetailDecomposed.Constants;
 using RetailDecomposed.Services;
 
 namespace RetailDecomposed.Controllers;
@@ -123,7 +124,6 @@ public class SearchController : ControllerBase
     [HttpGet("categories")]
     public IActionResult GetCategories()
     {
-        var categories = new[] { "Beauty", "Apparel", "Footwear", "Home", "Accessories", "Electronics" };
-        return Ok(new { categories });
+        return Ok(new { categories = ProductCategories.All });
     }
 }
