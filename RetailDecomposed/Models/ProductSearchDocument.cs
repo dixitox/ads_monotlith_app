@@ -46,7 +46,7 @@ public class ProductSearchDocument
 
     /// <summary>
     /// Vector embeddings for semantic search combining name and description.
-    /// 1536 dimensions for text-embedding-ada-002 model.
+    /// 1536 dimensions for text-embedding-3-small model.
     /// </summary>
     [VectorSearchField(VectorSearchDimensions = 1536, VectorSearchProfileName = "vector-profile")]
     public ReadOnlyMemory<float>? NameDescriptionVector { get; set; }

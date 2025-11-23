@@ -30,7 +30,7 @@ public interface ISemanticSearchService
     Task<List<ProductSearchResult>> SearchProductsAsync(string query, int top = 10, string? categoryFilter = null);
 
     /// <summary>
-    /// Generates embeddings for text using Azure OpenAI text-embedding-ada-002 model.
+    /// Generates embeddings for text using Azure OpenAI text-embedding-3-small model.
     /// </summary>
     /// <param name="text">Text to generate embeddings for.</param>
     /// <returns>Array of embeddings (1536 dimensions).</returns>

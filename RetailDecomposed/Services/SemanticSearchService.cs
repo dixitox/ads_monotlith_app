@@ -124,7 +124,7 @@ public class SemanticSearchService : ISemanticSearchService
                 try
                 {
                     // Combine name and description for embedding
-                    var textForEmbedding = $"{product.Name}. {product.Description}";
+                    var textForEmbedding = $"{product.Name}. {product.Description ?? string.Empty}";
                     
                     // Generate embeddings
                     var embeddings = await GenerateEmbeddingsAsync(textForEmbedding);
@@ -144,8 +144,8 @@ public class SemanticSearchService : ISemanticSearchService
                         Id = product.Id.ToString(),
                         Sku = product.Sku,
                         Name = product.Name,
-                        Description = product.Description,
-                        Category = product.Category,
+                        Description = product.Description ?? string.Empty,
+                        Category = product.Category ?? string.Empty,
                         Price = product.Price,
                         NameDescriptionVector = embeddings
                     };
@@ -219,7 +219,17 @@ public class SemanticSearchService : ISemanticSearchService
             // Add category filter if provided
             if (!string.IsNullOrWhiteSpace(categoryFilter))
             {
-                searchOptions.Filter = $"Category eq '{categoryFilter}'";
+                // Validate category filter against whitelist to prevent OData filter injection
+                var validCategories = new[] { "Beauty", "Apparel", "Footwear", "Home", "Accessories", "Electronics" };
+                if (validCategories.Contains(categoryFilter, StringComparer.OrdinalIgnoreCase))
+                {
+                    searchOptions.Filter = $"Category eq '{categoryFilter}'";
+                }
+                else
+                {
+                    _logger.LogWarning("Invalid category filter attempted: {CategoryFilter}", categoryFilter);
+                    throw new ArgumentException($"Invalid category filter. Valid categories are: {string.Join(", ", validCategories)}", nameof(categoryFilter));
+                }
             }
 
             // Configure vector search
