@@ -4,6 +4,7 @@ using Azure.Identity;
 using OpenAI.Chat;
 using RetailMonolith.Models;
 using System.Text;
+using System.Diagnostics;
 
 namespace RetailDecomposed.Services
 {
@@ -15,6 +16,7 @@ namespace RetailDecomposed.Services
         private readonly float _temperature;
         private readonly IProductsApiClient _productsApiClient;
         private readonly ILogger<CopilotService> _logger;
+        private static readonly ActivitySource _activitySource = TelemetryActivitySources.Copilot;
 
         public CopilotService(
             IConfiguration configuration,
@@ -51,10 +53,17 @@ namespace RetailDecomposed.Services
             List<ChatMessage>? conversationHistory = null,
             CancellationToken ct = default)
         {
+            using var activity = _activitySource.StartActivity("GetChatResponse", ActivityKind.Server);
+            activity?.SetTag("copilot.user_message_length", userMessage?.Length ?? 0);
+            activity?.SetTag("copilot.has_conversation_history", conversationHistory?.Count > 0);
+            activity?.SetTag("copilot.history_message_count", conversationHistory?.Count ?? 0);
+            
             try
             {
                 // Get product catalog for context
                 var products = await _productsApiClient.GetProductsAsync(ct);
+                activity?.SetTag("copilot.product_count", products.Count);
+                
                 var productContext = BuildProductContext(products);
 
                 // Build the system message with product context
@@ -96,15 +105,32 @@ namespace RetailDecomposed.Services
                 };
 
                 // Get completion
-                var completion = await chatClient.CompleteChatAsync(messages, chatOptions, ct);
+                ChatCompletion completion;
+                using (var completionActivity = _activitySource.StartActivity("AzureOpenAI.CompleteChat", ActivityKind.Client))
+                {
+                    completionActivity?.SetTag("ai.model", _deploymentName);
+                    completionActivity?.SetTag("ai.max_tokens", _maxTokens);
+                    completionActivity?.SetTag("ai.temperature", _temperature);
+                    completionActivity?.SetTag("ai.message_count", messages.Count);
+                    
+                    var completionResult = await chatClient.CompleteChatAsync(messages, chatOptions, ct);
+                    completion = completionResult.Value;
+                    
+                    completionActivity?.SetTag("ai.response_tokens", completion.Usage?.OutputTokenCount ?? 0);
+                    completionActivity?.SetTag("ai.total_tokens", completion.Usage?.TotalTokenCount ?? 0);
+                }
 
-                var response = completion.Value.Content[0].Text;
+                var response = completion.Content[0].Text;
+                activity?.SetTag("copilot.response_length", response?.Length ?? 0);
+                
                 _logger.LogInformation("AI Copilot response generated for user message: {Message}", userMessage);
                 
                 return response;
             }
             catch (Exception ex)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                activity?.RecordException(ex);
                 _logger.LogError(ex, "Error generating AI copilot response for message: {Message}", userMessage);
                 return "I apologize, but I'm having trouble processing your request right now. Please try again later.";
             }
