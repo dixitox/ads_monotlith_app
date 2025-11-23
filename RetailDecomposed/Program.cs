@@ -8,8 +8,65 @@ using RetailDecomposed.Services;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.Json.Serialization;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure OpenTelemetry with Application Insights
+var connectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+if (!string.IsNullOrEmpty(connectionString))
+{
+    builder.Services.AddOpenTelemetry()
+        .ConfigureResource(resource => resource
+            .AddService(
+                serviceName: "RetailDecomposed",
+                serviceVersion: "1.0.0",
+                serviceInstanceId: Environment.MachineName))
+        .UseAzureMonitor(options =>
+        {
+            options.ConnectionString = connectionString;
+        })
+        .WithTracing(tracing => tracing
+            .AddAspNetCoreInstrumentation(options =>
+            {
+                options.RecordException = true;
+                options.EnrichWithHttpRequest = (activity, httpRequest) =>
+                {
+                    activity.SetTag("http.request.user", httpRequest.HttpContext.User?.Identity?.Name ?? "anonymous");
+                };
+                options.EnrichWithHttpResponse = (activity, httpResponse) =>
+                {
+                    activity.SetTag("http.response.content_length", httpResponse.ContentLength);
+                };
+            })
+            .AddHttpClientInstrumentation(options =>
+            {
+                options.RecordException = true;
+                options.EnrichWithHttpRequestMessage = (activity, httpRequestMessage) =>
+                {
+                    activity.SetTag("http.request.url", httpRequestMessage.RequestUri?.ToString());
+                };
+                options.EnrichWithHttpResponseMessage = (activity, httpResponseMessage) =>
+                {
+                    activity.SetTag("http.response.status_code", (int)httpResponseMessage.StatusCode);
+                };
+            })
+            .AddSqlClientInstrumentation(options =>
+            {
+                options.RecordException = true;
+            })
+            .AddSource("RetailDecomposed.Services.*"))
+        .WithMetrics(metrics => metrics
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation());
+}
+else
+{
+    Console.WriteLine("Application Insights not configured - telemetry disabled");
+}
 
 // Use in-memory database for testing, SQL Server for production
 if (builder.Environment.EnvironmentName == "Testing")
