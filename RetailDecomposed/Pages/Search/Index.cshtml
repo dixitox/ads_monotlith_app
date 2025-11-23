@@ -1,0 +1,227 @@
+@page
+@model RetailDecomposed.Pages.Search.IndexModel
+@{
+    ViewData["Title"] = "Semantic Search";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="bi bi-search"></i> Semantic Product Search
+            </h1>
+            <p class="lead text-muted">
+                Search for products using natural language. Try queries like "comfortable running shoes" or "anti-aging skincare products".
+            </p>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill"></i> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Search Box -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="get" asp-page-handler="Search" class="row g-3">
+                        <div class="col-md-7">
+                            <label for="query" class="form-label fw-bold">Search Query</label>
+                            <input type="text" 
+                                   class="form-control form-control-lg" 
+                                   id="query" 
+                                   name="query" 
+                                   value="@Model.SearchQuery"
+                                   placeholder="e.g., comfortable shoes for running, anti-aging cream, smart home devices"
+                                   required />
+                        </div>
+                        <div class="col-md-3">
+                            <label for="category" class="form-label fw-bold">Category</label>
+                            <select class="form-select form-select-lg" id="category" name="category">
+                                @foreach (var cat in Model.Categories)
+                                {
+                                    <option value="@cat" selected="@(cat == Model.SelectedCategory || (string.IsNullOrEmpty(Model.SelectedCategory) && cat == "All"))">
+                                        @cat
+                                    </option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Index Management (Admin Only) -->
+    @if (User.IsInRole("Admin"))
+    {
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm bg-light">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-gear-fill"></i> Index Management
+                        </h5>
+                        <p class="card-text text-muted small">
+                            First create the search index, then index all products with embeddings for semantic search.
+                        </p>
+                        <form method="post" class="d-inline me-2">
+                            <button type="submit" asp-page-handler="CreateIndex" class="btn btn-outline-secondary">
+                                <i class="bi bi-plus-circle"></i> Create Index
+                            </button>
+                        </form>
+                        <form method="post" class="d-inline">
+                            <button type="submit" asp-page-handler="IndexProducts" class="btn btn-outline-primary">
+                                <i class="bi bi-cloud-upload"></i> Index Products
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Search Results -->
+    @if (Model.HasSearched)
+    {
+        <div class="row">
+            <div class="col-12">
+                <h3 class="mb-3">
+                    Search Results 
+                    @if (!string.IsNullOrEmpty(Model.SearchQuery))
+                    {
+                        <span class="text-muted">for "@Model.SearchQuery"</span>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.SelectedCategory) && Model.SelectedCategory != "All")
+                    {
+                        <span class="badge bg-secondary">@Model.SelectedCategory</span>
+                    }
+                </h3>
+                
+                @if (Model.SearchResults.Any())
+                {
+                    <p class="text-muted">Found @Model.SearchResults.Count products</p>
+                    
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                        @foreach (var product in Model.SearchResults)
+                        {
+                            <div class="col">
+                                <div class="card h-100 shadow-sm hover-shadow">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title">@product.Name</h5>
+                                            <span class="badge bg-info text-dark" 
+                                                  title="Relevance Score">
+                                                @product.Score.ToString("F2")
+                                            </span>
+                                        </div>
+                                        <h6 class="card-subtitle mb-2 text-muted">
+                                            <span class="badge bg-secondary">@product.Category</span>
+                                            <small class="ms-2">SKU: @product.Sku</small>
+                                        </h6>
+                                        <p class="card-text small">@product.Description</p>
+                                        <div class="d-flex justify-content-between align-items-center mt-3">
+                                            <span class="h5 mb-0 text-primary">£@product.Price.ToString("F2")</span>
+                                            <a href="/Products/Index?id=@product.Id" class="btn btn-sm btn-outline-primary">
+                                                View Details
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> No products found matching your search. Try different keywords or check if products have been indexed.
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Example Queries -->
+    @if (!Model.HasSearched)
+    {
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-lightbulb"></i> Try These Example Queries
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <ul class="list-unstyled">
+                                    <li class="mb-2">
+                                        <a href="?handler=Search&query=comfortable%20shoes%20for%20running" class="text-decoration-none">
+                                            <i class="bi bi-arrow-right-circle"></i> comfortable shoes for running
+                                        </a>
+                                    </li>
+                                    <li class="mb-2">
+                                        <a href="?handler=Search&query=anti-aging%20skincare%20products" class="text-decoration-none">
+                                            <i class="bi bi-arrow-right-circle"></i> anti-aging skincare products
+                                        </a>
+                                    </li>
+                                    <li class="mb-2">
+                                        <a href="?handler=Search&query=smart%20home%20devices" class="text-decoration-none">
+                                            <i class="bi bi-arrow-right-circle"></i> smart home devices
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="list-unstyled">
+                                    <li class="mb-2">
+                                        <a href="?handler=Search&query=warm%20winter%20clothing" class="text-decoration-none">
+                                            <i class="bi bi-arrow-right-circle"></i> warm winter clothing
+                                        </a>
+                                    </li>
+                                    <li class="mb-2">
+                                        <a href="?handler=Search&query=luxury%20accessories" class="text-decoration-none">
+                                            <i class="bi bi-arrow-right-circle"></i> luxury accessories
+                                        </a>
+                                    </li>
+                                    <li class="mb-2">
+                                        <a href="?handler=Search&query=bedroom%20comfort%20essentials" class="text-decoration-none">
+                                            <i class="bi bi-arrow-right-circle"></i> bedroom comfort essentials
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .hover-shadow {
+        transition: box-shadow 0.3s ease-in-out;
+    }
+    .hover-shadow:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+</style>

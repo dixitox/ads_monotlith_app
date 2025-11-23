@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
-using RetailMonolith.Data;
-using RetailMonolith.Services;
+using RetailDecomposed.Data;
+using RetailDecomposed.Services;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.Json.Serialization;
@@ -172,6 +172,9 @@ builder.Services.AddHttpClient<RetailDecomposed.Services.IProductsApiClient, Ret
 // Register AI Copilot service (depends on IProductsApiClient)
 builder.Services.AddScoped<RetailDecomposed.Services.ICopilotService, RetailDecomposed.Services.CopilotService>();
 
+// Register Semantic Search service
+builder.Services.AddScoped<RetailDecomposed.Services.ISemanticSearchService, RetailDecomposed.Services.SemanticSearchService>();
+
 // Register Orders API Client for decomposed Orders module
 builder.Services.AddHttpClient<RetailDecomposed.Services.IOrdersApiClient, RetailDecomposed.Services.OrdersApiClient>(client =>
 {
@@ -219,11 +222,8 @@ app.UseAuthorization();
 
 app.MapRazorPages();
 
-// Only map controllers if Azure AD is configured (for MicrosoftIdentity area controllers)
-if (isAzureAdConfigured)
-{
-    app.MapControllers();
-}
+// Map controllers (for Search API and MicrosoftIdentity area controllers)
+app.MapControllers();
 
 // Helper method to validate that the authenticated user matches the requested customerId
 static bool IsAuthorizedForCustomer(HttpContext httpContext, string customerId)
@@ -353,7 +353,7 @@ ApplyAuthorizationIfConfigured(
         logger.LogInformation("Orders API called by user: {UserId}, IsAdmin: {IsAdmin}, IsAuthenticated: {IsAuthenticated}", 
             userId, isAdmin, user.Identity?.IsAuthenticated);
         
-        IQueryable<RetailMonolith.Models.Order> query = db.Orders.Include(o => o.Lines);
+        IQueryable<RetailDecomposed.Models.Order> query = db.Orders.Include(o => o.Lines);
         
         // Only filter by user if authorization is required and user is not admin
         if (requireAuthorization && !isAdmin && !string.IsNullOrEmpty(userId))
@@ -468,6 +468,13 @@ Console.ForegroundColor = ConsoleColor.Yellow;
 Console.WriteLine("  ┌─ AI Copilot API");
 Console.ResetColor();
 Console.WriteLine("  │  └─ POST /api/chat            → Chat with AI assistant");
+Console.ForegroundColor = ConsoleColor.Yellow;
+Console.WriteLine("  ┌─ Semantic Search API");
+Console.ResetColor();
+Console.WriteLine("  │  ├─ POST /api/search/create-index → Create search index");
+Console.WriteLine("  │  ├─ POST /api/search/index        → Index all products");
+Console.WriteLine("  │  ├─ GET  /api/search?query={q}    → Search products");
+Console.WriteLine("  │  └─ GET  /api/search/categories   → Get categories");
 Console.WriteLine("\n" + new string('=', 80) + "\n");
 
 app.Run();
