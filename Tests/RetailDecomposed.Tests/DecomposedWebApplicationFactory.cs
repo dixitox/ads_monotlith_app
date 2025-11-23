@@ -6,8 +6,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using RetailMonolith.Data;
-using RetailMonolith.Models;
+using Moq;
+using RetailDecomposed.Data;
+using RetailDecomposed.Models;
+using RetailDecomposed.Services;
 
 namespace RetailDecomposed.Tests;
 
@@ -49,8 +51,12 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
                 ["AzureAI:Endpoint"] = "https://mock-azure-ai.openai.azure.com/",
                 ["AzureAI:DeploymentName"] = "gpt-4o-test",
                 ["AzureAI:MaxTokens"] = "800",
-                ["AzureAI:Temperature"] = "0.7"
-            });
+                ["AzureAI:Temperature"] = "0.7",
+                // Mock Azure Search configuration to allow SemanticSearchService initialization in tests
+                ["AzureSearch:Endpoint"] = "https://mock-search.search.windows.net",
+                ["AzureSearch:IndexName"] = "products-test-index",
+                ["AzureSearch:EmbeddingDeploymentName"] = "text-embedding-3-small-test"
+            }!);
         });
 
         builder.ConfigureServices(services =>
@@ -163,6 +169,43 @@ public class DecomposedWebApplicationFactory : WebApplicationFactory<RetailDecom
             })
             .ConfigurePrimaryHttpMessageHandler(() => Server.CreateHandler())
             .AddHttpMessageHandler<AuthenticationPropagatingHandler>();
+
+            // Replace real SemanticSearchService with mock for testing
+            // This avoids Azure authentication attempts in test environment
+            var semanticSearchDescriptor = services.FirstOrDefault(d => 
+                d.ServiceType == typeof(ISemanticSearchService));
+            if (semanticSearchDescriptor != null)
+            {
+                services.Remove(semanticSearchDescriptor);
+            }
+
+            services.AddScoped<ISemanticSearchService>(sp => 
+            {
+                var mock = new Mock<ISemanticSearchService>();
+                
+                // Mock SearchProductsAsync to return empty results
+                // Tests verify endpoint behavior, not Azure Search integration
+                mock.Setup(m => m.SearchProductsAsync(
+                    It.IsAny<string>(), 
+                    It.IsAny<int>(), 
+                    It.IsAny<string?>()))
+                    .ReturnsAsync(new List<ProductSearchResult>());
+                
+                // Mock CreateOrUpdateIndexAsync to return success
+                mock.Setup(m => m.CreateOrUpdateIndexAsync())
+                    .ReturnsAsync(true);
+                
+                // Mock IndexProductsAsync to return success (number of products indexed)
+                mock.Setup(m => m.IndexProductsAsync())
+                    .ReturnsAsync(3); // Match the 3 test products seeded
+                
+                // Mock GenerateEmbeddingsAsync to return empty vector
+                // Tests don't require actual embeddings
+                mock.Setup(m => m.GenerateEmbeddingsAsync(It.IsAny<string>()))
+                    .ReturnsAsync(new ReadOnlyMemory<float>(new float[1536]));
+                
+                return mock.Object;
+            });
         });
 
         base.ConfigureWebHost(builder);

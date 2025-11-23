@@ -2,8 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using RetailMonolith.Data;
-using RetailMonolith.Models;
+using RetailDecomposed.Data;
+using RetailDecomposed.Models;
 using RetailDecomposed.Services;
 
 namespace RetailMonolith.Pages.Orders

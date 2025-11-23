@@ -1,8 +1,8 @@
-﻿
-using Microsoft.EntityFrameworkCore;
-using RetailMonolith.Models;
 
-namespace RetailMonolith.Data
+using Microsoft.EntityFrameworkCore;
+using RetailDecomposed.Models;
+
+namespace RetailDecomposed.Data
 {
     public class AppDbContext:DbContext
     {

@@ -2,6 +2,12 @@
 
 This guide explains how to configure Microsoft Entra ID (formerly Azure AD) authentication for the RetailDecomposed application.
 
+## Related Documentation
+
+- **[SEMANTIC_SEARCH_GUIDE.md](SEMANTIC_SEARCH_GUIDE.md)** - Complete guide for semantic search with RBAC and Azure AI services
+- **[README.md](README.md)** - Project overview and getting started
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Production deployment guide
+
 ## Overview
 
 The RetailDecomposed application now includes:

@@ -1,4 +1,4 @@
-using RetailMonolith.Models;
+using RetailDecomposed.Models;
 using System.Net.Http.Json;
 
 namespace RetailDecomposed.Services
