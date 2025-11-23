@@ -84,22 +84,22 @@ public class ObservabilityTests : IClassFixture<DecomposedWebApplicationFactory>
     {
         // Arrange
         Activity? capturedActivity = null;
-        var listener = new ActivityListener
+        using (var listener = new ActivityListener
         {
             ShouldListenTo = source => source.Name.StartsWith("Microsoft.AspNetCore"),
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
             ActivityStarted = activity => capturedActivity = activity
-        };
-        ActivitySource.AddActivityListener(listener);
+        })
+        {
+            ActivitySource.AddActivityListener(listener);
 
-        // Act
-        await _client.GetAsync("/");
+            // Act
+            await _client.GetAsync("/");
 
-        // Assert
-        Assert.NotNull(capturedActivity);
-        Assert.NotNull(capturedActivity.Id);
-        
-        listener.Dispose();
+            // Assert
+            Assert.NotNull(capturedActivity);
+            Assert.NotNull(capturedActivity.Id);
+        }
     }
 
     [Fact]
