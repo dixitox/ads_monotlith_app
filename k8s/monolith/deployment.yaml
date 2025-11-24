@@ -1,0 +1,97 @@
+# Deployment for RetailMonolith with Azure AD authentication
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retail-monolith
+  namespace: retail-monolith
+  labels:
+    app: retail-monolith
+    version: v1
+    azure.workload.identity/use: "true"
+spec:
+  replicas: 2  # Run 2 replicas for high availability
+  selector:
+    matchLabels:
+      app: retail-monolith
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0  # Ensure zero downtime during updates
+  template:
+    metadata:
+      labels:
+        app: retail-monolith
+        version: v1
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: retail-monolith-sa
+      containers:
+      - name: retail-monolith
+        image: acrretailmonolith.azurecr.io/retail-monolith:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        
+        # Environment variables from ConfigMap
+        envFrom:
+        - configMapRef:
+            name: retail-monolith-config
+        
+        # Environment variables from Secrets
+        env:
+        - name: ConnectionStrings__DefaultConnection
+          valueFrom:
+            secretKeyRef:
+              name: retail-monolith-secrets
+              key: ConnectionStrings__DefaultConnection
+        
+        # Resource limits and requests
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        
+        # Liveness probe - check if container is alive
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        
+        # Readiness probe - check if container is ready to serve traffic
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        
+        # Startup probe - give app more time to start
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 30  # 30 * 10 = 300 seconds (5 minutes) to start
+      
+      # Graceful shutdown
+      terminationGracePeriodSeconds: 30
+      
+      # Security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000

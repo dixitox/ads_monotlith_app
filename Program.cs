@@ -58,8 +58,10 @@ app.UseAuthorization();
 
 app.MapRazorPages();
 
+// Health check endpoint for Kubernetes probes
+app.MapHealthChecks("/health");
 
-// minimal APIs for the �decomp� path
+// minimal APIs for the "decomp" path
 app.MapPost("/api/checkout", async (ICheckoutService svc) =>
 {
     var order = await svc.CheckoutAsync("guest", "tok_test");

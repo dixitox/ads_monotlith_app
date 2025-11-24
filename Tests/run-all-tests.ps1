@@ -65,13 +65,39 @@ if (Test-Path $decomposedProject) {
 Write-Host ""
 Write-Host ""
 
+# Run Docker Compose Local Tests
+Write-Host "------------------------------------" -ForegroundColor Yellow
+Write-Host "Running Docker Compose Local Tests..." -ForegroundColor Yellow
+Write-Host "------------------------------------" -ForegroundColor Yellow
+Write-Host ""
+
+$dockerTestScript = Join-Path $testsDir "run-local-tests.ps1"
+
+if (Test-Path $dockerTestScript) {
+    & $dockerTestScript
+    if ($LASTEXITCODE -ne 0) {
+        $allTestsPassed = $false
+        Write-Host ""
+        Write-Host "❌ Docker Compose Tests FAILED" -ForegroundColor Red
+    } else {
+        Write-Host ""
+        Write-Host "✅ Docker Compose Tests PASSED" -ForegroundColor Green
+    }
+} else {
+    Write-Host "⚠️  Docker Compose test script not found at $dockerTestScript" -ForegroundColor Yellow
+    Write-Host "Skipping Docker tests..." -ForegroundColor Yellow
+}
+
+Write-Host ""
+Write-Host ""
+
 # Summary
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "           Test Summary" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
 if ($allTestsPassed) {
-    Write-Host "✅ ALL TESTS PASSED" -ForegroundColor Green
+    Write-Host "✅ ALL TESTS PASSED (Unit + Integration + Docker)" -ForegroundColor Green
     exit 0
 } else {
     Write-Host "❌ SOME TESTS FAILED" -ForegroundColor Red

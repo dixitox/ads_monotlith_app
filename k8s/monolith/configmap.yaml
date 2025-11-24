@@ -1,0 +1,26 @@
+# ConfigMap for RetailMonolith
+# Contains non-sensitive configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: retail-monolith-config
+  namespace: retail-monolith
+data:
+  # ASP.NET Core Environment
+  ASPNETCORE_ENVIRONMENT: "Production"
+  
+  # URLs configuration
+  ASPNETCORE_URLS: "http://+:8080"
+  
+  # SQL Server configuration (using Azure AD / Managed Identity authentication)
+  SQL_SERVER: "sql-retail-monolith.database.windows.net"
+  SQL_DATABASE: "RetailMonolithDB"
+  
+  # Azure AD authentication mode
+  SQL_AUTH_TYPE: "ActiveDirectoryManagedIdentity"
+  
+  # Logging configuration
+  Logging__LogLevel__Default: "Information"
+  Logging__LogLevel__Microsoft.AspNetCore: "Warning"
+  Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command: "Warning"
+

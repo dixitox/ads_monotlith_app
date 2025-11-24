@@ -2,6 +2,16 @@
 
 This folder contains functional tests for both the monolithic and decomposed retail applications.
 
+## Test Types
+
+### 1. Unit/Integration Tests (.NET)
+Traditional .NET tests using xUnit and in-memory databases.
+
+### 2. Docker Compose Tests (Local Deployment)
+End-to-end tests that validate the complete Docker environment with real SQL Server.
+
+See [LOCAL_TESTING_GUIDE.md](./LOCAL_TESTING_GUIDE.md) for detailed Docker testing documentation.
+
 ## Test Projects
 
 ### 1. RetailMonolith.Tests
@@ -28,23 +38,41 @@ Functional tests for the decomposed application with API endpoints.
 
 ## Running Tests
 
-### Run All Tests
+### Run All Tests (Unit + Integration + Docker)
 ```powershell
 # From repository root
 .\Tests\run-all-tests.ps1
 ```
 
-### Run Monolith Tests Only
+This runs:
+1. RetailMonolith unit/integration tests
+2. RetailDecomposed unit/integration tests  
+3. Docker Compose local deployment tests
+
+### Run Unit Tests Only
+
+#### Run Monolith Tests Only
 ```powershell
 # From repository root
 dotnet test .\Tests\RetailMonolith.Tests\RetailMonolith.Tests.csproj
 ```
 
-### Run Decomposed Tests Only
+#### Run Decomposed Tests Only
 ```powershell
 # From repository root
 dotnet test .\Tests\RetailDecomposed.Tests\RetailDecomposed.Tests.csproj
 ```
+
+### Run Docker Compose Tests Only
+```powershell
+# Complete workflow (build, start, test, cleanup)
+.\Tests\run-local-tests.ps1
+
+# Or run tests against already running containers
+.\Tests\test-local-deployment.ps1
+```
+
+See [LOCAL_TESTING_GUIDE.md](./LOCAL_TESTING_GUIDE.md) for detailed Docker testing documentation.
 
 ### Run Tests with Detailed Output
 ```powershell

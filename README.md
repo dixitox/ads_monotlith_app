@@ -164,3 +164,101 @@ You can override the default connection string by setting the `ConnectionStrings
 | -------------------------------------- | -------------------------- | ---------------- |
 | `ConnectionStrings__DefaultConnection` | Database connection string | LocalDB instance |
 | `ASPNETCORE_ENVIRONMENT`               | Environment mode           | `Development`    |
+
+---
+
+## Azure Kubernetes Service (AKS) Deployment 🚀
+
+**RetailMonolith is now fully containerized and deployed to Azure!**
+
+### Production Deployment
+- **URL**: https://145.133.57.234
+- **Region**: UK South
+- **Authentication**: Azure AD with Managed Identity
+- **Security**: HTTPS-only with TLS encryption
+- **High Availability**: 2 replicas with auto-healing
+
+### Complete Deployment Guide
+See **[MONOLITH_DEPLOYMENT_GUIDE.md](MONOLITH_DEPLOYMENT_GUIDE.md)** for:
+- Step-by-step deployment instructions
+- Azure infrastructure setup
+- Azure AD authentication configuration
+- Kubernetes manifests and configuration
+- Troubleshooting real issues encountered
+- Production hardening recommendations
+- Cost estimates and optimization tips
+
+### Quick Deploy Summary
+```powershell
+# 1. Create Azure infrastructure (ACR, AKS, SQL)
+.\setup-azure-infrastructure-monolith.ps1
+
+# 2. Configure Azure AD authentication
+.\configure-azure-ad-auth.ps1
+
+# 3. Build and push Docker image
+.\build-and-push-monolith.ps1 -AcrName "acrretailmonolith"
+
+# 4. Deploy to AKS
+.\deploy-monolith.ps1 -WaitForReady
+```
+
+**Total deployment time**: ~30 minutes | **Monthly cost**: ~£115
+
+---
+
+## Testing 🧪
+
+**Comprehensive testing suite for unit, integration, and Docker-based tests.**
+
+### Quick Start
+```powershell
+# Run ALL tests (Unit + Integration + Docker)
+.\Tests\run-all-tests.ps1
+
+# Run only unit/integration tests
+dotnet test
+
+# Run only Docker Compose tests
+.\Tests\run-local-tests.ps1
+```
+
+### What's Included
+- **Unit/Integration Tests**: xUnit tests with in-memory database
+- **Docker Compose Tests**: End-to-end tests with real SQL Server
+- **Automated Test Suite**: 35+ tests covering all features
+- **PowerShell Scripts**: Automated test execution and validation
+
+### Test Coverage
+- ✅ All pages: Products, Cart, Orders, Checkout
+- ✅ API endpoints validation
+- ✅ Database connectivity and migrations
+- ✅ Container health checks
+- ✅ Response time performance
+- ✅ Static files serving
+- ✅ Error log analysis
+
+See **[Tests/README.md](Tests/README.md)** for complete testing documentation.
+
+See **[Tests/LOCAL_TESTING_GUIDE.md](Tests/LOCAL_TESTING_GUIDE.md)** for Docker testing guide.
+
+---
+
+## Project Structure
+
+```
+ads_monotlith_app/
+├── RetailMonolith/              # This monolithic application (root)
+│   ├── Program.cs
+│   ├── Data/                    # EF Core DbContext
+│   ├── Models/                  # Product, Cart, Order entities
+│   ├── Services/                # Business logic services
+│   ├── Pages/                   # Razor Pages UI
+│   ├── Dockerfile.monolith      # Docker containerization
+│   └── k8s/monolith/           # Kubernetes manifests
+│
+├── RetailDecomposed/            # Modernized microservices version
+│   ├── (Future deployment)
+│   └── (See RetailDecomposed/README.md)
+│
+└── Tests/                       # Unit and integration tests

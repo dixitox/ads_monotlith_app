@@ -1,0 +1,8 @@
+# Namespace for RetailMonolith
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: retail-monolith
+  labels:
+    app: retail-monolith
+    environment: production

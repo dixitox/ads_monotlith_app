@@ -1,0 +1,22 @@
+# Service for RetailMonolith
+# Exposes the deployment internally within the cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: retail-monolith-service
+  namespace: retail-monolith
+  labels:
+    app: retail-monolith
+spec:
+  type: ClusterIP  # Internal service, will be exposed via Ingress
+  selector:
+    app: retail-monolith
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+  sessionAffinity: ClientIP  # Stick sessions to same pod
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800  # 3 hours

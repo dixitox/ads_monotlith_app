@@ -1,0 +1,65 @@
+# Ingress for RetailMonolith
+# Exposes the application to the internet
+# Requires NGINX Ingress Controller to be installed in the cluster
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: retail-monolith-ingress
+  namespace: retail-monolith
+  annotations:
+    # NGINX Ingress Controller annotations
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"  # Force HTTPS
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"  # Force HTTPS redirect
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    
+    # Session affinity
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "route"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
+    
+    # Timeouts
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: SAMEORIGIN";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+    
+    # Optional: Add Let's Encrypt certificate (uncomment when ready for HTTPS)
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  # TLS configuration with self-signed certificate
+  tls:
+  - hosts:
+    - retail-monolith.yourdomain.com
+    secretName: retail-monolith-tls
+  
+  rules:
+  # Rule for domain-based access (when you configure DNS)
+  - host: retail-monolith.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: retail-monolith-service
+            port:
+              number: 80
+  
+  # Catch-all rule for IP-based access (no host specified)
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: retail-monolith-service
+            port:
+              number: 80

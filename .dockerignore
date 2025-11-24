@@ -1,0 +1,68 @@
+# .dockerignore for RetailMonolith
+# Exclude unnecessary files from Docker build context
+
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+
+# Visual Studio / Visual Studio Code
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Test projects and results
+**/Tests/
+**/*.Tests/
+TestResults/
+*.trx
+
+# NuGet packages (will be restored during build)
+*.nupkg
+*.snupkg
+packages/
+
+# Database files
+*.mdf
+*.ldf
+*.ndf
+
+# RetailDecomposed folder (not needed for monolith)
+RetailDecomposed/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+LICENSE
+.github/
+
+# Docker files
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Scripts
+*.ps1
+
+# Images and static assets during build (they're in wwwroot)
+Images/
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
