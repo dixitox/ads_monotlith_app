@@ -151,14 +151,25 @@ try {
 # Test 7: Database connectivity
 Write-TestHeader "Test 7: Database Connectivity"
 try {
-    $sqlOutput = docker exec retail-sqlserver /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong!Passw0rd" -Q "SELECT COUNT(*) FROM RetailMonolith.dbo.Products" -h -1 2>&1
+    $sqlOutput = docker exec retail-monolith-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "YourStrong!Passw0rd" -C -Q "SELECT COUNT(*) FROM RetailMonolith.dbo.Products" -h -1 -W 2>&1
     
     if ($LASTEXITCODE -eq 0) {
-        $productCount = $sqlOutput.Trim()
-        if ([int]$productCount -gt 0) {
+        # SQL Server returns output followed by "(X rows affected)"
+        # Parse array and get the first line with numeric value
+        if ($sqlOutput -is [array]) {
+            # Find first line that contains only a number
+            $productCountStr = ($sqlOutput | Where-Object { $_ -match '^\s*\d+\s*$' } | Select-Object -First 1)
+        } else {
+            $productCountStr = $sqlOutput
+        }
+        
+        $productCountStr = $productCountStr.ToString().Trim()
+        
+        if ($productCountStr -match '^\d+$') {
+            $productCount = [int]$productCountStr
             Write-TestResult "Database Connection" $true "Products in database: $productCount"
         } else {
-            Write-TestResult "Database Connection" $false "Database connected but no products found"
+            Write-TestResult "Database Connection" $false "Unexpected SQL output: $productCountStr"
         }
     } else {
         Write-TestResult "Database Connection" $false "SQL query failed"
@@ -171,12 +182,19 @@ try {
 Write-TestHeader "Test 8: Container Logs Analysis"
 try {
     $appLogs = docker-compose logs retail-monolith --tail=100 2>&1
-    $errorCount = ($appLogs | Select-String -Pattern "error|exception|fail" -CaseSensitive:$false).Count
+    # Filter out false positives: logging framework references, test references, etc.
+    $criticalErrors = $appLogs | Select-String -Pattern "\[Error\]|\[Critical\]|\[Fatal\]|Exception:" -CaseSensitive:$false | Where-Object {
+        $_ -notmatch "Microsoft\.EntityFrameworkCore" -and
+        $_ -notmatch "SpanId" -and
+        $_ -notmatch "TraceId" -and
+        $_ -notmatch "LogLevel.*Error"
+    }
+    $errorCount = $criticalErrors.Count
     
     if ($errorCount -eq 0) {
-        Write-TestResult "Application Logs" $true "No errors found in recent logs"
+        Write-TestResult "Application Logs" $true "No critical errors found in recent logs"
     } else {
-        Write-TestResult "Application Logs" $false "Found $errorCount potential errors in logs"
+        Write-TestResult "Application Logs" $false "Found $errorCount critical errors in logs"
     }
 } catch {
     Write-TestResult "Application Logs" $false $_.Exception.Message

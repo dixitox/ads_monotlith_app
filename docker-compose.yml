@@ -1,10 +1,8 @@
-version: '3.8'
-
 services:
-  # SQL Server for local development
+  # SQL Server for local development (Monolith)
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: retail-sqlserver
+    container_name: retail-monolith-sqlserver
     environment:
       - ACCEPT_EULA=Y
       - SA_PASSWORD=YourStrong!Passw0rd

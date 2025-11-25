@@ -1,0 +1,55 @@
+# Dockerfile for Cart Microservice
+# This service manages shopping cart operations
+# Port: 8082
+# Dependencies: Products Service (http://products-service:8081)
+
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+# Copy project file and restore dependencies
+COPY RetailDecomposed.csproj .
+RUN dotnet restore
+
+# Copy source code
+COPY . .
+
+# Remove all other Program*.cs files except Cart, then rename Cart to Program.cs
+RUN rm -f Program.cs Program.Products.cs Program.Orders.cs Program.Checkout.cs Program.Frontend.cs && \
+    mv Program.Cart.cs Program.cs
+
+# Build the application
+RUN dotnet build -c Release -o /app/build
+
+# Publish stage
+FROM build AS publish
+RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
+
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+WORKDIR /app
+
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Copy published application
+COPY --from=publish /app/publish .
+
+# Set ownership
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8080
+
+# Set environment variables
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+
+# Entry point
+ENTRYPOINT ["dotnet", "RetailDecomposed.dll"]

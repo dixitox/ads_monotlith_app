@@ -65,9 +65,9 @@ if (Test-Path $decomposedProject) {
 Write-Host ""
 Write-Host ""
 
-# Run Docker Compose Local Tests
+# Run Docker Compose Local Tests (Monolith)
 Write-Host "------------------------------------" -ForegroundColor Yellow
-Write-Host "Running Docker Compose Local Tests..." -ForegroundColor Yellow
+Write-Host "Running Docker Compose Local Tests (Monolith)..." -ForegroundColor Yellow
 Write-Host "------------------------------------" -ForegroundColor Yellow
 Write-Host ""
 
@@ -78,14 +78,53 @@ if (Test-Path $dockerTestScript) {
     if ($LASTEXITCODE -ne 0) {
         $allTestsPassed = $false
         Write-Host ""
-        Write-Host "❌ Docker Compose Tests FAILED" -ForegroundColor Red
+        Write-Host "❌ Docker Compose Tests (Monolith) FAILED" -ForegroundColor Red
     } else {
         Write-Host ""
-        Write-Host "✅ Docker Compose Tests PASSED" -ForegroundColor Green
+        Write-Host "✅ Docker Compose Tests (Monolith) PASSED" -ForegroundColor Green
     }
 } else {
     Write-Host "⚠️  Docker Compose test script not found at $dockerTestScript" -ForegroundColor Yellow
     Write-Host "Skipping Docker tests..." -ForegroundColor Yellow
+}
+
+Write-Host ""
+Write-Host ""
+
+# Run Microservices Deployment Tests
+Write-Host "------------------------------------" -ForegroundColor Yellow
+Write-Host "Running Microservices Deployment Tests..." -ForegroundColor Yellow
+Write-Host "------------------------------------" -ForegroundColor Yellow
+Write-Host ""
+
+$microservicesTestScript = Join-Path $testsDir "test-microservices-deployment.ps1"
+
+if (Test-Path $microservicesTestScript) {
+    # Ensure microservices are running before tests
+    Write-Host "🚀 Starting microservices containers..." -ForegroundColor Cyan
+    Push-Location (Join-Path $repoRoot "RetailDecomposed")
+    docker-compose -f docker-compose.microservices.yml up -d 2>&1 | Out-Null
+    
+    # Wait for services to be ready
+    Write-Host "⏳ Waiting 60 seconds for all services to initialize..." -ForegroundColor Cyan
+    Start-Sleep -Seconds 60
+    Pop-Location
+    
+    Write-Host "✅ Microservices started" -ForegroundColor Green
+    Write-Host ""
+    
+    & $microservicesTestScript -Environment Local
+    if ($LASTEXITCODE -ne 0) {
+        $allTestsPassed = $false
+        Write-Host ""
+        Write-Host "❌ Microservices Deployment Tests FAILED" -ForegroundColor Red
+    } else {
+        Write-Host ""
+        Write-Host "✅ Microservices Deployment Tests PASSED" -ForegroundColor Green
+    }
+} else {
+    Write-Host "⚠️  Microservices test script not found at $microservicesTestScript" -ForegroundColor Yellow
+    Write-Host "Skipping Microservices tests..." -ForegroundColor Yellow
 }
 
 Write-Host ""
@@ -97,7 +136,7 @@ Write-Host "           Test Summary" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
 if ($allTestsPassed) {
-    Write-Host "✅ ALL TESTS PASSED (Unit + Integration + Docker)" -ForegroundColor Green
+    Write-Host "✅ ALL TESTS PASSED (Unit + Integration + Docker + Microservices)" -ForegroundColor Green
     exit 0
 } else {
     Write-Host "❌ SOME TESTS FAILED" -ForegroundColor Red

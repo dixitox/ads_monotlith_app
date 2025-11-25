@@ -29,4 +29,13 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.SqlClient" Version="1.0.0-rc9.14" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Exclude microservice-specific Program files from compilation -->
+    <!-- These are used only in Docker builds where they're renamed to Program.cs -->
+    <Compile Remove="Program.Cart.cs" />
+    <Compile Remove="Program.Checkout.cs" />
+    <Compile Remove="Program.Orders.cs" />
+    <Compile Remove="Program.Products.cs" />
+  </ItemGroup>
+
 </Project>

@@ -302,11 +302,12 @@ public class ObservabilityTests : IClassFixture<DecomposedWebApplicationFactory>
         Assert.Contains(testActivity.Tags, t => t.Key == "exception.message" && t.Value == "Test error");
 
         // Act - Request endpoint without authentication to trigger error
+        // Use cart endpoint which requires authentication
         var clientWithoutAuth = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false
         });
-        var response = await clientWithoutAuth.GetAsync("/api/products/1");
+        var response = await clientWithoutAuth.GetAsync("/api/cart/testcustomer");
 
         // Assert - Verify error response (in production, this would be traced with error status)
         Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);

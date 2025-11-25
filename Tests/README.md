@@ -2,6 +2,66 @@
 
 This folder contains functional tests for both the monolithic and decomposed retail applications.
 
+## Port Configuration
+
+**Both systems can now run simultaneously!** SQL Server ports have been separated to enable running both monolith and microservices together.
+
+### SQL Server Ports
+
+| System | Container Name | Host Port | Internal Port | Database |
+|--------|---------------|-----------|---------------|----------|
+| **Monolith** | `retail-monolith-sqlserver` | **1433** | 1433 | RetailMonolith |
+| **Microservices** | `retaildecomposed-sqlserver` | **1434** | 1433 | RetailDecomposedDB |
+
+### Application Ports
+
+**Monolith:**
+- Frontend: http://localhost:5068
+- Container: `retail-monolith-app`
+
+**Microservices:**
+- Frontend: http://localhost:8080
+- Products API: http://localhost:8081
+- Cart API: http://localhost:8082
+- Orders API: http://localhost:8083
+- Checkout API: http://localhost:8084
+
+### Connection Strings
+
+```csharp
+// Monolith (external access)
+Server=localhost,1433;Database=RetailMonolith;User ID=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+
+// Microservices (external access)
+Server=localhost,1434;Database=RetailDecomposedDB;User ID=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+
+// Microservices (internal - from containers)
+Server=sqlserver;Database=RetailDecomposedDB;User ID=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+```
+
+### Running Both Systems Simultaneously
+
+```powershell
+# Terminal 1 - Start Monolith
+docker-compose up -d
+
+# Terminal 2 - Start Microservices
+cd RetailDecomposed
+docker-compose -f docker-compose.microservices.yml up -d
+
+# Verify both running
+docker ps
+
+# Stop Monolith
+docker-compose down
+
+# Stop Microservices
+cd RetailDecomposed
+docker-compose -f docker-compose.microservices.yml down
+```
+
+---
+
 ## Test Types
 
 ### 1. Unit/Integration Tests (.NET)

@@ -22,7 +22,7 @@ if (!string.IsNullOrEmpty(connectionString))
     builder.Services.AddOpenTelemetry()
         .ConfigureResource(resource => resource
             .AddService(
-                serviceName: "RetailDecomposed",
+                serviceName: "RetailDecomposed-Frontend",
                 serviceVersion: "1.0.0",
                 serviceInstanceId: Environment.MachineName))
         .UseAzureMonitor(options =>
@@ -78,17 +78,17 @@ else
 {
     builder.Services.AddDbContext<AppDbContext>(o =>
         o.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ??
-                       "Server=(localdb)\\MSSQLLocalDB;Database=RetailMonolith;Trusted_Connection=True;MultipleActiveResultSets=true"));
+                       "Server=(localdb)\\MSSQLLocalDB;Database=RetailDecomposed;Trusted_Connection=True;MultipleActiveResultSets=true"));
 }
 
-// Configure JSON serialization to handle circular references
+// Configure JSON serialization
 builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
 {
     options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 });
 
-// Check if Azure AD is configured (not using placeholder values)
+// Check if Azure AD is configured
 var azureAdConfig = builder.Configuration.GetSection("AzureAd");
 var tenantId = azureAdConfig["TenantId"];
 var clientId = azureAdConfig["ClientId"];
@@ -98,8 +98,6 @@ var isAzureAdConfigured = !string.IsNullOrEmpty(clientId) &&
                           !string.IsNullOrEmpty(tenantId) &&
                           Guid.TryParse(tenantId, out _);
 
-// Determine if authorization should be required
-// Priority: Explicit configuration > Azure AD configured > Testing environment
 var requireAuthorizationConfig = builder.Configuration.GetValue<bool?>("RequireAuthorization");
 var isTesting = builder.Environment.IsEnvironment("Testing");
 var requireAuthorization = requireAuthorizationConfig ?? (isAzureAdConfigured || isTesting);
@@ -121,15 +119,13 @@ if (isAzureAdConfigured)
         {
             builder.Configuration.Bind("AzureAd", options);
             options.SignedOutRedirectUri = "/";
-            
-            // Map Azure AD roles to ASP.NET Core roles
-            // Azure AD sends roles using this specific claim type
             options.TokenValidationParameters.RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
         });
 }
-else
+else if (!builder.Environment.IsEnvironment("Testing"))
 {
-    // Fallback to NoAuth handler for development without Azure AD
+    // Only add NoAuth handler in non-testing environments
+    // In testing, the test framework provides its own authentication handler
     builder.Services.AddAuthentication("NoAuth")
         .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, NoAuthHandler>("NoAuth", options => { });
 }
@@ -143,26 +139,23 @@ builder.Services.AddAuthorization(options =>
         policy.RequireAuthenticatedUser());
 });
 
-// Add MicrosoftIdentityUI for sign-in/sign-out when Azure AD is configured
+// Add Razor Pages and Controllers
 if (isAzureAdConfigured)
 {
     builder.Services.AddRazorPages(options =>
     {
-        // Require authentication for specific pages when authorization is required
         if (requireAuthorization)
         {
             options.Conventions.AuthorizePage("/Copilot/Index", "CustomerAccess");
         }
     })
         .AddMicrosoftIdentityUI();
-    // Add controllers for MicrosoftIdentity UI
     builder.Services.AddControllers();
 }
 else
 {
     builder.Services.AddRazorPages(options =>
     {
-        // Require authentication for specific pages when authorization is required
         if (requireAuthorization)
         {
             options.Conventions.AuthorizePage("/Copilot/Index", "CustomerAccess");
@@ -170,89 +163,84 @@ else
     });
 }
 
-// Add antiforgery services
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "X-CSRF-TOKEN";
 });
 
-builder.Services.AddScoped<IPaymentGateway, MockPaymentGateway>();
-builder.Services.AddScoped<ICheckoutService, CheckoutService>();
-builder.Services.AddScoped<ICartService, CartService>();
-
-// Add support for propagating user tokens to downstream services
+// Register HttpContext accessor for cookie propagation
 builder.Services.AddHttpContextAccessor();
-
-// Register cookie propagating handler for API calls
 builder.Services.AddTransient<RetailDecomposed.Services.CookiePropagatingHandler>();
 
-// WARNING: Never use DangerousAcceptAnyServerCertificateValidator in production!
-// This bypasses ALL SSL certificate validation and exposes the application to MITM attacks.
-// Ensure this is ONLY enabled in development. If enabled in any other environment, fail fast.
+// Helper to create HttpClient handlers
 static HttpMessageHandler CreateHttpMessageHandler(bool isDevelopment)
 {
     var handler = new HttpClientHandler();
     if (isDevelopment)
     {
-        // Allow untrusted certificates in development only
         handler.ServerCertificateCustomValidationCallback =
             HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
     }
     else
     {
-        // Defensive: If this ever gets enabled in non-development, throw.
         if (handler.ServerCertificateCustomValidationCallback == HttpClientHandler.DangerousAcceptAnyServerCertificateValidator)
         {
             throw new InvalidOperationException(
-                "DangerousAcceptAnyServerCertificateValidator must NEVER be used in production. Check environment configuration.");
+                "DangerousAcceptAnyServerCertificateValidator must NEVER be used in production.");
         }
     }
     return handler;
 }
 
-// Register Cart API Client for decomposed Cart module
-builder.Services.AddHttpClient<RetailDecomposed.Services.ICartApiClient, RetailDecomposed.Services.CartApiClient>(client =>
+// Get service URLs from configuration
+var productsServiceUrl = builder.Configuration["ProductsServiceUrl"] ?? "http://localhost:8081";
+var cartServiceUrl = builder.Configuration["CartServiceUrl"] ?? "http://localhost:8082";
+var ordersServiceUrl = builder.Configuration["OrdersServiceUrl"] ?? "http://localhost:8083";
+var checkoutServiceUrl = builder.Configuration["CheckoutServiceUrl"] ?? "http://localhost:8084";
+
+// Register HttpClients for all backend services (API Clients)
+builder.Services.AddHttpClient<IProductsApiClient, ProductsApiClient>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:6068");
+    client.BaseAddress = new Uri(productsServiceUrl);
 })
-.AddHttpMessageHandler<RetailDecomposed.Services.CookiePropagatingHandler>()
+.AddHttpMessageHandler<CookiePropagatingHandler>()
 .ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
 
-// Register Products API Client for decomposed Products module
-builder.Services.AddHttpClient<RetailDecomposed.Services.IProductsApiClient, RetailDecomposed.Services.ProductsApiClient>(client =>
+builder.Services.AddHttpClient<ICartApiClient, CartApiClient>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:6068");
+    client.BaseAddress = new Uri(cartServiceUrl);
 })
-.AddHttpMessageHandler<RetailDecomposed.Services.CookiePropagatingHandler>()
+.AddHttpMessageHandler<CookiePropagatingHandler>()
 .ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
 
-// Register AI Copilot service (depends on IProductsApiClient)
-builder.Services.AddScoped<RetailDecomposed.Services.ICopilotService, RetailDecomposed.Services.CopilotService>();
-
-// Register Semantic Search service
-builder.Services.AddScoped<RetailDecomposed.Services.ISemanticSearchService, RetailDecomposed.Services.SemanticSearchService>();
-
-// Register Orders API Client for decomposed Orders module
-builder.Services.AddHttpClient<RetailDecomposed.Services.IOrdersApiClient, RetailDecomposed.Services.OrdersApiClient>(client =>
+builder.Services.AddHttpClient<IOrdersApiClient, OrdersApiClient>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:6068");
+    client.BaseAddress = new Uri(ordersServiceUrl);
 })
-.AddHttpMessageHandler<RetailDecomposed.Services.CookiePropagatingHandler>()
+.AddHttpMessageHandler<CookiePropagatingHandler>()
 .ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
 
-// Register Checkout API Client for decomposed Checkout module
-builder.Services.AddHttpClient<RetailDecomposed.Services.ICheckoutApiClient, RetailDecomposed.Services.CheckoutApiClient>(client =>
+builder.Services.AddHttpClient<ICheckoutApiClient, CheckoutApiClient>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:6068");
+    client.BaseAddress = new Uri(checkoutServiceUrl);
 })
-.AddHttpMessageHandler<RetailDecomposed.Services.CookiePropagatingHandler>()
+.AddHttpMessageHandler<CookiePropagatingHandler>()
 .ConfigurePrimaryHttpMessageHandler(() => CreateHttpMessageHandler(builder.Environment.IsDevelopment()));
+
+// Register AI services (Copilot and Semantic Search)
+builder.Services.AddScoped<ICopilotService, CopilotService>();
+builder.Services.AddScoped<ISemanticSearchService, SemanticSearchService>();
+
+// Register services for local API endpoints (used in testing and local development)
+builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddScoped<ICheckoutService, CheckoutService>();
+builder.Services.AddScoped<IPaymentGateway, MockPaymentGateway>();
 
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-// Skip migrations and seeding in test environment
+// Run migrations and seed data (Frontend manages schema)
 if (app.Environment.EnvironmentName != "Testing")
 {
     using (var scope = app.Services.CreateScope())
@@ -273,271 +261,198 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
-// Use authentication and authorization middleware
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapRazorPages();
-
-// Map controllers (for Search API and MicrosoftIdentity area controllers)
 app.MapControllers();
 
-// Helper method to validate that the authenticated user matches the requested customerId
-static bool IsAuthorizedForCustomer(HttpContext httpContext, string customerId)
+// ============================================================================
+// API ENDPOINTS (for testing and local development)
+// ============================================================================
+
+// Health check endpoint
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "frontend" }));
+
+// Products API endpoints
+app.MapGet("/api/products", async (AppDbContext db) =>
 {
-    var authenticatedUserId = httpContext.User.Identity?.Name;
-    return !string.IsNullOrEmpty(authenticatedUserId) && authenticatedUserId == customerId;
-}
+    var products = await db.Products
+        .Where(p => p.IsActive)
+        .ToListAsync();
+    return Results.Ok(products);
+});
 
-// Helper method to apply authorization when Azure AD is configured
-static RouteHandlerBuilder ApplyAuthorizationIfConfigured(RouteHandlerBuilder builder, bool isConfigured, string policyName)
+app.MapGet("/api/products/{id}", async (int id, AppDbContext db) =>
 {
-    return isConfigured ? builder.RequireAuthorization(policyName) : builder.AllowAnonymous();
-}
+    var product = await db.Products.FindAsync(id);
+    if (product is null || !product.IsActive)
+        return Results.NotFound();
+    return Results.Ok(product);
+});
 
-// Cart API surface for decomposition
-ApplyAuthorizationIfConfigured(
-    app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart, ClaimsPrincipal user) =>
-    {
-        // Validate that the authenticated user matches the customerId (only if authorization is required)
-        if (requireAuthorization)
-        {
-            var authenticatedUserId = user.Identity?.Name;
-            if (authenticatedUserId != customerId)
-            {
-                return Results.Forbid();
-            }
-        }
-        
-        var cartData = await cart.GetCartWithLinesAsync(customerId);
-        return Results.Ok(cartData);
-    }),
-    requireAuthorization,
-    "CustomerAccess"
-);
+app.MapGet("/api/products/category/{category}", async (string category, AppDbContext db) =>
+{
+    var products = await db.Products
+        .Where(p => p.IsActive && p.Category == category)
+        .ToListAsync();
+    return Results.Ok(products);
+});
 
-ApplyAuthorizationIfConfigured(
-    app.MapPost("/api/cart/{customerId}/items", async (string customerId, int productId, int quantity, ICartService cart, ClaimsPrincipal user) =>
-    {
-        // Validate that the authenticated user matches the customerId (only if authorization is required)
-        if (requireAuthorization)
-        {
-            var authenticatedUserId = user.Identity?.Name;
-            if (authenticatedUserId != customerId)
-            {
-                return Results.Forbid();
-            }
-        }
-        
-        await cart.AddToCartAsync(customerId, productId, quantity);
-        return Results.Ok();
-    }),
-    requireAuthorization,
-    "CustomerAccess"
-);
+// Cart API endpoints (require authentication and user match)
+app.MapGet("/api/cart/{customerId}", async (string customerId, ICartService cart, HttpContext context) =>
+{
+    if (context.User.Identity?.IsAuthenticated != true)
+        return Results.Unauthorized();
+    
+    var userId = context.User.Identity?.Name;
+    if (userId != customerId)
+        return Results.Forbid();
+    
+    var cartData = await cart.GetCartWithLinesAsync(customerId);
+    return Results.Ok(cartData);
+});
 
-ApplyAuthorizationIfConfigured(
-    app.MapDelete("/api/cart/{customerId}/items/{sku}", async (string customerId, string sku, ICartService cart, ClaimsPrincipal user) =>
-    {
-        // Validate that the authenticated user matches the customerId (only if authorization is required)
-        if (requireAuthorization)
-        {
-            var authenticatedUserId = user.Identity?.Name;
-            if (authenticatedUserId != customerId)
-            {
-                return Results.Forbid();
-            }
-        }
-        
-        await cart.RemoveFromCartAsync(customerId, sku);
-        return Results.Ok();
-    }),
-    requireAuthorization,
-    "CustomerAccess"
-);
+app.MapPost("/api/cart/{customerId}/items", async (string customerId, int productId, int quantity, ICartService cart, HttpContext context) =>
+{
+    if (context.User.Identity?.IsAuthenticated != true)
+        return Results.Unauthorized();
+    
+    var userId = context.User.Identity?.Name;
+    if (userId != customerId)
+        return Results.Forbid();
+    
+    await cart.AddToCartAsync(customerId, productId, quantity);
+    return Results.Ok(new { message = "Item added to cart" });
+});
 
-ApplyAuthorizationIfConfigured(
-    app.MapDelete("/api/cart/{customerId}", async (string customerId, ICartService cart, ClaimsPrincipal user) =>
-    {
-        // Validate that the authenticated user matches the customerId (only if authorization is required)
-        if (requireAuthorization)
-        {
-            var authenticatedUserId = user.Identity?.Name;
-            if (authenticatedUserId != customerId)
-            {
-                return Results.Forbid();
-            }
-        }
-        
-        await cart.ClearCartAsync(customerId);
-        return Results.Ok();
-    }),
-    requireAuthorization,
-    "CustomerAccess"
-);
+app.MapDelete("/api/cart/{customerId}/items/{sku}", async (string customerId, string sku, ICartService cart, HttpContext context) =>
+{
+    if (context.User.Identity?.IsAuthenticated != true)
+        return Results.Unauthorized();
+    
+    var userId = context.User.Identity?.Name;
+    if (userId != customerId)
+        return Results.Forbid();
+    
+    await cart.RemoveFromCartAsync(customerId, sku);
+    return Results.Ok(new { message = "Item removed from cart" });
+});
 
-// Products API surface for decomposition
-ApplyAuthorizationIfConfigured(
-    app.MapGet("/api/products", async (AppDbContext db) =>
-    {
-        var products = await db.Products.Where(p => p.IsActive).ToListAsync();
-        return Results.Ok(products);
-    }),
-    requireAuthorization,
-    "CustomerAccess"
-);
+app.MapDelete("/api/cart/{customerId}", async (string customerId, ICartService cart, HttpContext context) =>
+{
+    if (context.User.Identity?.IsAuthenticated != true)
+        return Results.Unauthorized();
+    
+    var userId = context.User.Identity?.Name;
+    if (userId != customerId)
+        return Results.Forbid();
+    
+    await cart.ClearCartAsync(customerId);
+    return Results.Ok(new { message = "Cart cleared" });
+});
 
-ApplyAuthorizationIfConfigured(
-    app.MapGet("/api/products/{id}", async (int id, AppDbContext db) =>
+// Orders API endpoints
+app.MapGet("/api/orders", async (AppDbContext db, string? customerId = null) =>
+{
+    IQueryable<RetailDecomposed.Models.Order> query = db.Orders.Include(o => o.Lines);
+    
+    if (!string.IsNullOrEmpty(customerId))
     {
-        var product = await db.Products.FindAsync(id);
-        if (product is null)
-            return Results.NotFound();
-        return Results.Ok(product);
-    }),
-    requireAuthorization,
-    "CustomerAccess"
-);
+        query = query.Where(o => o.CustomerId == customerId);
+    }
+    
+    var orders = await query.OrderByDescending(o => o.CreatedUtc).ToListAsync();
+    return Results.Ok(orders);
+});
 
-// Orders API surface for decomposition
-ApplyAuthorizationIfConfigured(
-    app.MapGet("/api/orders", async (AppDbContext db, ClaimsPrincipal user, ILogger<Program> logger) =>
-    {
-        // If user is Admin, return all orders. Otherwise, return only their orders.
-        var userId = user.Identity?.Name;
-        var isAdmin = user.IsInRole("Admin");
-        
-        logger.LogInformation("Orders API called by user: {UserId}, IsAdmin: {IsAdmin}, IsAuthenticated: {IsAuthenticated}", 
-            userId, isAdmin, user.Identity?.IsAuthenticated);
-        
-        IQueryable<RetailDecomposed.Models.Order> query = db.Orders.Include(o => o.Lines);
-        
-        // Only filter by user if authorization is required and user is not admin
-        if (requireAuthorization && !isAdmin && !string.IsNullOrEmpty(userId))
-        {
-            logger.LogInformation("Filtering orders for user: {UserId}", userId);
-            query = query.Where(o => o.CustomerId == userId);
-        }
-        else if (isAdmin)
-        {
-            logger.LogInformation("Admin user - returning all orders");
-        }
-        
-        var orders = await query.OrderByDescending(o => o.CreatedUtc).ToListAsync();
-        logger.LogInformation("Returning {OrderCount} orders", orders.Count);
-        return Results.Ok(orders);
-    }),
-    requireAuthorization,
-    "CustomerAccess"
-);
+app.MapGet("/api/orders/{id}", async (int id, AppDbContext db) =>
+{
+    var order = await db.Orders
+        .Include(o => o.Lines)
+        .FirstOrDefaultAsync(o => o.Id == id);
+    if (order is null)
+        return Results.NotFound();
+    return Results.Ok(order);
+});
 
-ApplyAuthorizationIfConfigured(
-    app.MapGet("/api/orders/{id}", async (int id, AppDbContext db) =>
+app.MapGet("/api/orders/customer/{customerId}", async (string customerId, AppDbContext db) =>
+{
+    var orders = await db.Orders
+        .Include(o => o.Lines)
+        .Where(o => o.CustomerId == customerId)
+        .OrderByDescending(o => o.CreatedUtc)
+        .ToListAsync();
+    return Results.Ok(orders);
+});
+
+// Checkout API endpoint
+app.MapPost("/api/checkout", async (CheckoutRequest request, ICheckoutService checkoutService) =>
+{
+    try
     {
-        var order = await db.Orders
-            .Include(o => o.Lines)
-            .FirstOrDefaultAsync(o => o.Id == id);
-        if (order is null)
-            return Results.NotFound();
+        var order = await checkoutService.CheckoutAsync(request.CustomerId, request.PaymentToken);
         return Results.Ok(order);
-    }),
-    requireAuthorization,
-    "CustomerAccess"
-);
-
-// Checkout API surface for decomposition
-ApplyAuthorizationIfConfigured(
-    app.MapPost("/api/checkout", async (CheckoutRequest request, ICheckoutService checkoutService) =>
+    }
+    catch (InvalidOperationException ex)
     {
-        try
-        {
-            var order = await checkoutService.CheckoutAsync(request.CustomerId, request.PaymentToken);
-            return Results.Ok(order);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Results.BadRequest(new { error = ex.Message });
-        }
-    }),
-    requireAuthorization,
-    "CustomerAccess"
-);
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
 
-// AI Copilot Chat API
-ApplyAuthorizationIfConfigured(
-    app.MapPost("/api/chat", async (ChatRequest request, RetailDecomposed.Services.ICopilotService copilotService) =>
+// Chat/Copilot API endpoint
+app.MapPost("/api/chat", async (ChatApiRequest request, ICopilotService copilotService, HttpContext context) =>
+{
+    if (context.User.Identity?.IsAuthenticated != true)
+        return Results.Unauthorized();
+    
+    if (string.IsNullOrWhiteSpace(request.Message))
+        return Results.BadRequest(new { error = "Message cannot be empty" });
+    
+    try
     {
-        if (string.IsNullOrWhiteSpace(request.Message))
-        {
-            return Results.BadRequest(new { error = "Message cannot be empty" });
-        }
+        var response = await copilotService.GetChatResponseAsync(request.Message, request.ConversationHistory);
+        return Results.Ok(new { response });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+});
 
-        try
-        {
-            var response = await copilotService.GetChatResponseAsync(
-                request.Message,
-                request.ConversationHistory);
-            
-            return Results.Ok(new { response });
-        }
-        catch (Exception ex)
-        {
-            return Results.Problem(
-                detail: "An error occurred processing your request",
-                statusCode: 500);
-        }
-    }),
-    requireAuthorization,
-    "CustomerAccess"
-);
+// ============================================================================
 
-// Display API endpoints banner
-var urls = app.Urls.FirstOrDefault() ?? "http://localhost:6068";
+// Display service info
+var urls = app.Urls.FirstOrDefault() ?? "http://localhost:8080";
 Console.WriteLine("\n" + new string('=', 80));
 Console.ForegroundColor = ConsoleColor.Cyan;
-Console.WriteLine("  RETAIL DECOMPOSED - Microservices Architecture");
+Console.WriteLine("  FRONTEND SERVICE (Razor Pages UI)");
 Console.ResetColor();
 Console.WriteLine(new string('=', 80));
 Console.ForegroundColor = ConsoleColor.Green;
-Console.WriteLine($"\n  Application running at: {urls}\n");
+Console.WriteLine($"\n  Service running at: {urls}\n");
 Console.ResetColor();
-Console.WriteLine("  Decomposed API Endpoints:");
-Console.ForegroundColor = ConsoleColor.Yellow;
-Console.WriteLine("  ┌─ Products API");
-Console.ResetColor();
-Console.WriteLine("  │  ├─ GET  /api/products        → List all active products");
-Console.WriteLine("  │  └─ GET  /api/products/{id}   → Get product by ID");
-Console.ForegroundColor = ConsoleColor.Yellow;
-Console.WriteLine("  ┌─ Cart API");
-Console.ResetColor();
-Console.WriteLine("  │  ├─ GET  /api/cart/{customerId}       → Get customer cart");
-Console.WriteLine("  │  └─ POST /api/cart/{customerId}/items → Add item to cart");
-Console.ForegroundColor = ConsoleColor.Yellow;
-Console.WriteLine("  ┌─ Orders API");
-Console.ResetColor();
-Console.WriteLine("  │  ├─ GET  /api/orders          → List all orders (desc)");
-Console.WriteLine("  │  └─ GET  /api/orders/{id}     → Get order by ID");
-Console.ForegroundColor = ConsoleColor.Yellow;
-Console.WriteLine("  ┌─ Checkout API");
-Console.ResetColor();
-Console.WriteLine("  │  └─ POST /api/checkout        → Process checkout");
-Console.ForegroundColor = ConsoleColor.Yellow;
-Console.WriteLine("  ┌─ AI Copilot API");
-Console.ResetColor();
-Console.WriteLine("  │  └─ POST /api/chat            → Chat with AI assistant");
-Console.ForegroundColor = ConsoleColor.Yellow;
-Console.WriteLine("  ┌─ Semantic Search API");
-Console.ResetColor();
-Console.WriteLine("  │  ├─ POST /api/search/create-index → Create search index");
-Console.WriteLine("  │  ├─ POST /api/search/index        → Index all products");
-Console.WriteLine("  │  ├─ GET  /api/search?query={q}    → Search products");
-Console.WriteLine("  │  └─ GET  /api/search/categories   → Get categories");
+Console.WriteLine("  Pages:");
+Console.WriteLine("  ├─ GET  /                      → Home page");
+Console.WriteLine("  ├─ GET  /Products              → Product catalog");
+Console.WriteLine("  ├─ GET  /Cart                  → Shopping cart");
+Console.WriteLine("  ├─ GET  /Checkout              → Checkout page");
+Console.WriteLine("  ├─ GET  /Orders                → Order history");
+Console.WriteLine("  ├─ GET  /Orders/{id}           → Order details");
+Console.WriteLine("  ├─ GET  /Search                → Semantic search");
+Console.WriteLine("  └─ GET  /Copilot               → AI Copilot chat");
+Console.WriteLine("\n  Backend Services:");
+Console.WriteLine($"  ├─ Products:  {productsServiceUrl}");
+Console.WriteLine($"  ├─ Cart:      {cartServiceUrl}");
+Console.WriteLine($"  ├─ Orders:    {ordersServiceUrl}");
+Console.WriteLine($"  └─ Checkout:  {checkoutServiceUrl}");
+Console.WriteLine("\n  Authentication:");
+Console.WriteLine($"  └─ Azure AD:  {(isAzureAdConfigured ? "Configured" : "Not configured (NoAuth mode)")}");
 Console.WriteLine("\n" + new string('=', 80) + "\n");
 
 app.Run();
 
-// Dummy authentication handler that allows all requests without authentication
-// Provides a fake "guest" user identity for development without Azure AD
+// Dummy authentication handler for no-auth mode
 public class NoAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
     public NoAuthHandler(
@@ -549,7 +464,6 @@ public class NoAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        // Create a fake guest user identity with required claims
         var claims = new[]
         {
             new Claim(ClaimTypes.Name, "guest"),
@@ -566,7 +480,6 @@ public class NoAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 
     protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        // Return 401 Unauthorized to indicate authentication failure
         Response.StatusCode = 401;
         await Response.WriteAsync("Authentication required.");
     }
@@ -574,7 +487,8 @@ public class NoAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 
 // DTOs for API endpoints
 record CheckoutRequest(string CustomerId, string PaymentToken);
-record ChatRequest(string Message, List<RetailDecomposed.Services.ChatMessage>? ConversationHistory);
+
+record ChatApiRequest(string Message, List<RetailDecomposed.Services.ChatMessage>? ConversationHistory);
 
 // Make Program class accessible to test projects
 namespace RetailDecomposed

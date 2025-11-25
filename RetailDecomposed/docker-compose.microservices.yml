@@ -1,0 +1,284 @@
+# Docker Compose configuration for RetailDecomposed Microservices Architecture
+# This file orchestrates 6 services: SQL Server + 5 microservices
+# Architecture: Products (8081), Cart (8082), Orders (8083), Checkout (8084), Frontend (8080)
+# Inter-service communication via HTTP REST APIs
+# Shared SQL Server database for Phase 1 implementation
+#
+# NOTE: This configuration is for LOCAL DEVELOPMENT ONLY
+# For Azure/Production deployment:
+# - SQL Server container will NOT be used
+# - All microservices will connect to Azure SQL Database
+# - Connection strings will be provided via environment variables or Azure Key Vault
+# - Kubernetes manifests will handle Azure-specific configuration
+
+networks:
+  retail-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  sqlserver-data:
+    driver: local
+
+services:
+  # ============================================================================
+  # SQL Server Database (Shared by all services) - Port 1434 for Microservices
+  # ============================================================================
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: retaildecomposed-sqlserver
+    hostname: sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "YourStrong!Passw0rd"
+      MSSQL_PID: "Express"
+    ports:
+      - "1434:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    networks:
+      retail-network:
+        ipv4_address: 172.28.0.10
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "YourStrong!Passw0rd" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  # ============================================================================
+  # Products Microservice (Port 8081)
+  # Responsibilities: Product catalog, inventory management
+  # Dependencies: SQL Server only
+  # ============================================================================
+  products-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.products
+    image: retaildecomposed-products:latest
+    container_name: retaildecomposed-products
+    hostname: products-service
+    ports:
+      - "8081:8081"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8081
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=RetailDecomposedDB;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=true
+    networks:
+      retail-network:
+        ipv4_address: 172.28.0.21
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    healthcheck:
+      test: curl -f http://localhost:8081/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # ============================================================================
+  # Cart Microservice (Port 8082)
+  # Responsibilities: Shopping cart operations
+  # Dependencies: SQL Server, Products Service
+  # ============================================================================
+  cart-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.cart
+    image: retaildecomposed-cart:latest
+    container_name: retaildecomposed-cart
+    hostname: cart-service
+    ports:
+      - "8082:8082"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8082
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=RetailDecomposedDB;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=true
+      - ProductsServiceUrl=http://products-service:8081
+    networks:
+      retail-network:
+        ipv4_address: 172.28.0.22
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      products-service:
+        condition: service_healthy
+    healthcheck:
+      test: curl -f http://localhost:8082/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # ============================================================================
+  # Orders Microservice (Port 8083)
+  # Responsibilities: Order history, read-only access
+  # Dependencies: SQL Server only
+  # ============================================================================
+  orders-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.orders
+    image: retaildecomposed-orders:latest
+    container_name: retaildecomposed-orders
+    hostname: orders-service
+    ports:
+      - "8083:8083"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8083
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=RetailDecomposedDB;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=true
+    networks:
+      retail-network:
+        ipv4_address: 172.28.0.23
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    healthcheck:
+      test: curl -f http://localhost:8083/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # ============================================================================
+  # Checkout Microservice (Port 8084)
+  # Responsibilities: Orchestrates checkout process
+  # Dependencies: SQL Server, Cart, Products, Orders services
+  # ============================================================================
+  checkout-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.checkout
+    image: retaildecomposed-checkout:latest
+    container_name: retaildecomposed-checkout
+    hostname: checkout-service
+    ports:
+      - "8084:8084"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8084
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=RetailDecomposedDB;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=true
+      - CartServiceUrl=http://cart-service:8082
+      - ProductsServiceUrl=http://products-service:8081
+      - OrdersServiceUrl=http://orders-service:8083
+    networks:
+      retail-network:
+        ipv4_address: 172.28.0.24
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      products-service:
+        condition: service_healthy
+      cart-service:
+        condition: service_healthy
+      orders-service:
+        condition: service_healthy
+    healthcheck:
+      test: curl -f http://localhost:8084/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # ============================================================================
+  # Frontend Microservice (Port 8080)
+  # Responsibilities: Web UI with Razor Pages, calls all backend services
+  # Dependencies: SQL Server, all backend services, Azure OpenAI (external), Azure AI Search (external)
+  # ============================================================================
+  frontend-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    image: retaildecomposed-frontend:latest
+    container_name: retaildecomposed-frontend
+    hostname: frontend-service
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=RetailDecomposedDB;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=true
+      - ProductsServiceUrl=http://products-service:8081
+      - CartServiceUrl=http://cart-service:8082
+      - OrdersServiceUrl=http://orders-service:8083
+      - CheckoutServiceUrl=http://checkout-service:8084
+      # Azure AD Authentication (configure these for production)
+      - AzureAd__Instance=https://login.microsoftonline.com/
+      - AzureAd__TenantId=your-tenant-id
+      - AzureAd__ClientId=your-client-id
+      - AzureAd__Domain=your-domain.onmicrosoft.com
+      - AzureAd__CallbackPath=/signin-oidc
+      # Azure OpenAI (configure these for AI features)
+      - AzureAI__Endpoint=https://your-openai-resource.openai.azure.com/
+      - AzureAI__DeploymentName=gpt-4
+      # Azure AI Search (configure these for semantic search)
+      - AzureSearch__Endpoint=https://your-search-service.search.windows.net
+      - AzureSearch__IndexName=products-index
+      # Application Insights (optional)
+      - APPLICATIONINSIGHTS_CONNECTION_STRING=your-connection-string
+    networks:
+      retail-network:
+        ipv4_address: 172.28.0.20
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      products-service:
+        condition: service_healthy
+      cart-service:
+        condition: service_healthy
+      orders-service:
+        condition: service_healthy
+      checkout-service:
+        condition: service_healthy
+    healthcheck:
+      test: curl -f http://localhost:8080/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    restart: unless-stopped
+
+# ============================================================================
+# Usage Instructions:
+# ============================================================================
+# 1. Build all images:
+#    docker-compose -f docker-compose.microservices.yml build
+#
+# 2. Start all services:
+#    docker-compose -f docker-compose.microservices.yml up -d
+#
+# 3. View logs:
+#    docker-compose -f docker-compose.microservices.yml logs -f
+#
+# 4. Stop all services:
+#    docker-compose -f docker-compose.microservices.yml down
+#
+# 5. Stop and remove volumes:
+#    docker-compose -f docker-compose.microservices.yml down -v
+#
+# 6. Access services:
+#    - Frontend UI: http://localhost:8080
+#    - Products API: http://localhost:8081/api/products
+#    - Cart API: http://localhost:8082/api/cart
+#    - Orders API: http://localhost:8083/api/orders
+#    - Checkout API: http://localhost:8084/api/checkout
+#    - SQL Server (Microservices): localhost:1434
+#
+# 7. Service startup order (managed by depends_on):
+#    1. SQL Server (sqlserver)
+#    2. Products Service (no dependencies on other services)
+#    3. Orders Service (no dependencies on other services)
+#    4. Cart Service (depends on Products)
+#    5. Checkout Service (depends on Cart, Products, Orders)
+#    6. Frontend Service (depends on all backend services)
+#
+# ============================================================================

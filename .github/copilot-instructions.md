@@ -88,6 +88,43 @@ dotnet run  # This runs RetailMonolith from root
 3. **When testing**: Navigate to http://localhost:6068 (HTTPS)
 4. **When debugging**: Monitor logs from RetailDecomposed process
 
+## Data Seeding Rules
+
+### ⚠️ CRITICAL: Use Monolith Data Only
+**NEVER create new seed data or use custom product data. ALWAYS replicate the exact data from RetailMonolith.**
+
+#### Seed Data Requirements:
+1. **Source of Truth**: `RetailMonolith/Data/AppDbContext.cs` contains the ONLY correct seed data
+2. **RetailDecomposed MUST match**: Both applications must have identical product data, categories, descriptions, and prices
+3. **NO custom data**: Do not create new products, categories, or modify existing product information
+4. **Product Categories** (from Monolith):
+   - Beauty (10 products)
+   - Apparel (10 products)
+   - Footwear (10 products)
+   - Home (10 products)
+   - Accessories (10 products)
+   - Electronics (10 products)
+5. **SKU Format**: `SKU-0001` through `SKU-0060` (4-digit zero-padded)
+6. **Currency**: Always "GBP"
+7. **Price Range**: Random prices between £5-£105 (matching Monolith logic)
+
+#### When Working with Data:
+- ✅ Copy seed logic exactly from `RetailMonolith/Data/AppDbContext.cs`
+- ✅ Use the same product names, descriptions, and categories
+- ✅ Use the same `GenerateDescription()` method
+- ✅ Maintain consistent inventory quantities (random 10-200)
+- ❌ Never create custom SeedData.cs files with different products
+- ❌ Never modify product categories or add new ones
+- ❌ Never change the SKU format or numbering
+- ❌ Never hardcode specific prices (use random generation matching Monolith)
+
+#### Verification:
+Before committing any database changes:
+1. Compare seed data between RetailMonolith and RetailDecomposed
+2. Verify product counts match (60 total products)
+3. Verify categories match exactly
+4. Test both applications show identical product listings
+
 ## Documentation Best Practices
 
 ### 📋 Avoid Duplication - Reuse Content
@@ -96,10 +133,12 @@ dotnet run  # This runs RetailMonolith from root
 #### Rules for Markdown Files:
 1. **Single Source of Truth**: Maintain ONE authoritative document per topic
    - ✅ `Tests/TEST_RESULTS.md` - Consolidated test results (all sessions)
-   - ❌ `Tests/TEST_RESULTS_SESSION_10.md`, `Tests/TEST_RESULTS_SESSION_11.md` - Don't create session-specific duplicates
+   - ✅ `Tests/README.md` - Test documentation with port config, running instructions
+   - ❌ `SESSION_XX_*.md`, `PORT_CONFIGURATION.md` - Don't create standalone session/config docs
 
 2. **Merge, Don't Multiply**:
    - When updating test results, update the existing `TEST_RESULTS.md`
+   - When updating port/deployment info, update `Tests/README.md`
    - Add new sections or update existing sections
    - Include session information within the main document
 
@@ -116,13 +155,30 @@ dotnet run  # This runs RetailMonolith from root
    - Check if content can be added to existing documentation
    - Search for related files: `file_search` for `*.md` files
    - Ask: "Does this information fit in an existing document?"
+   - **Preference**: Always update existing docs over creating new ones
 
-#### Existing Documentation Structure:
-- `/AI_COPILOT_COMPLETE_GUIDE.md` - AI Copilot implementation guide
+6. **Delete Obsolete Documentation**:
+   - Remove duplicate or superseded documentation files
+   - Keep only the consolidated, authoritative versions
+   - Clean up session-specific documentation after consolidation
+
+#### Primary Documentation Structure:
+- `/Tests/README.md` - Test overview, port configuration, running instructions
 - `/Tests/TEST_RESULTS.md` - Consolidated test results (all sessions)
-- `/Tests/README.md` - Test documentation overview
+- `/Tests/LOCAL_TESTING_GUIDE.md` - Docker testing detailed guide
 - `/RetailDecomposed/AUTHENTICATION_SETUP.md` - Authentication configuration
+- `/RetailDecomposed/DEPLOYMENT_GUIDE.md` - Deployment instructions
+- `/RetailDecomposed/AI_COPILOT_COMPLETE_GUIDE.md` - AI Copilot implementation
+- `/RetailDecomposed/OBSERVABILITY_GUIDE.md` - Observability setup
+- `/RetailDecomposed/SEMANTIC_SEARCH_GUIDE.md` - Semantic search implementation
 - `/.github/copilot-instructions.md` - This file (project guidelines)
+- `/README.md` - Main project README
+
+#### Documentation to AVOID Creating:
+- ❌ Session-specific docs (e.g., `SESSION_13_PORT_CONFIG.md`)
+- ❌ Duplicate config docs (e.g., `PORT_CONFIGURATION.md` when info is in Tests/README.md)
+- ❌ Standalone troubleshooting docs (add to relevant guide instead)
+- ❌ Temporary notes files (consolidate into main docs immediately)
 
 ## Production Deployment Considerations
 
