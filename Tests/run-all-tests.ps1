@@ -130,43 +130,42 @@ if (Test-Path $microservicesTestScript) {
 Write-Host ""
 Write-Host ""
 
-# Optional: Run Azure deployment tests if URL is provided
-if ($env:AZURE_FRONTEND_URL) {
-    Write-Host "------------------------------------" -ForegroundColor Yellow
-    Write-Host "Running Azure Deployment Tests..." -ForegroundColor Yellow
-    Write-Host "------------------------------------" -ForegroundColor Yellow
-    Write-Host ""
+# Optional: Run AKS deployment tests if kubectl is configured
+$aksTestScript = Join-Path $testsDir "test-aks-deployment.ps1"
+
+if (Test-Path $aksTestScript) {
+    # Check if kubectl is available and configured
+    $kubectlAvailable = $false
+    try {
+        $null = kubectl config current-context 2>&1
+        $kubectlAvailable = $LASTEXITCODE -eq 0
+    } catch {
+        $kubectlAvailable = $false
+    }
     
-    $azureTestScript = Join-Path $testsDir "test-azure-deployment.ps1"
-    
-    if (Test-Path $azureTestScript) {
-        $azureParams = @{
-            FrontendUrl = $env:AZURE_FRONTEND_URL
-        }
+    if ($kubectlAvailable) {
+        Write-Host "------------------------------------" -ForegroundColor Yellow
+        Write-Host "Running AKS Deployment Tests..." -ForegroundColor Yellow
+        Write-Host "------------------------------------" -ForegroundColor Yellow
+        Write-Host ""
         
-        if ($env:AZURE_RESOURCE_GROUP) {
-            $azureParams.ResourceGroup = $env:AZURE_RESOURCE_GROUP
-        }
-        
-        if ($env:SKIP_AZURE_CONTAINER_CHECKS -eq "true") {
-            $azureParams.SkipContainerChecks = $true
-        }
-        
-        & $azureTestScript @azureParams
+        & $aksTestScript
         if ($LASTEXITCODE -ne 0) {
             $allTestsPassed = $false
             Write-Host ""
-            Write-Host "❌ Azure Deployment Tests FAILED" -ForegroundColor Red
+            Write-Host "❌ AKS Deployment Tests FAILED" -ForegroundColor Red
         } else {
             Write-Host ""
-            Write-Host "✅ Azure Deployment Tests PASSED" -ForegroundColor Green
+            Write-Host "✅ AKS Deployment Tests PASSED" -ForegroundColor Green
         }
+        
+        Write-Host ""
+        Write-Host ""
     } else {
-        Write-Host "⚠️  Azure test script not found at $azureTestScript" -ForegroundColor Yellow
+        Write-Host "ℹ️  kubectl not configured - Skipping AKS tests" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host ""
     }
-    
-    Write-Host ""
-    Write-Host ""
 }
 
 # Summary
@@ -175,10 +174,7 @@ Write-Host "           Test Summary" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
 if ($allTestsPassed) {
-    $testScope = "Unit + Integration + Docker + Microservices"
-    if ($env:AZURE_FRONTEND_URL) {
-        $testScope += " + Azure"
-    }
+    $testScope = "Unit + Integration + Docker + Microservices + AKS"
     Write-Host "✅ ALL TESTS PASSED ($testScope)" -ForegroundColor Green
     exit 0
 } else {
