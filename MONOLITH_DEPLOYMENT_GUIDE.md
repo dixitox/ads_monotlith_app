@@ -3,6 +3,8 @@
 ## Overview
 This is the **complete, consolidated guide** for deploying RetailMonolith to Azure Kubernetes Service (AKS) with Azure AD authentication, HTTPS security, and all lessons learned from the deployment process.
 
+> **Note**: For deploying the modernized RetailDecomposed application, see [RetailDecomposed/DEPLOYMENT_GUIDE.md](RetailDecomposed/DEPLOYMENT_GUIDE.md)
+
 ## What You'll Deploy
 
 ### Architecture

@@ -5,7 +5,8 @@ namespace RetailMonolith.Services
     {
         public Task<PaymentResult> ChargeAsync(PaymentRequest req, CancellationToken ct = default)
         {
-            // trivial success for hack; add a random fail to demo error path if you like
+            // Mock payment gateway - always returns success for development/testing
+            // In production, replace with actual payment provider integration
             return Task.FromResult(new PaymentResult(true, $"MOCK-{Guid.NewGuid():N}", null));
         }
     }

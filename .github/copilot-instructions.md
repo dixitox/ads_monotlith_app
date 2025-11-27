@@ -6,13 +6,13 @@ This repository contains TWO separate ASP.NET Core applications:
 
 ### 1. RetailMonolith (Legacy Monolithic Application)
 - **Location**: Root directory (`/`)
-- **Port**: http://localhost:5068
+- **Port**: http://localhost:5068 (Docker container)
 - **Purpose**: Original monolithic retail application
 - **Status**: Legacy - DO NOT MODIFY unless explicitly requested
 
 ### 2. RetailDecomposed (Modern Decomposed Application)
 - **Location**: `/RetailDecomposed/` directory
-- **Port**: http://localhost:6068 (HTTPS)
+- **Port**: http://localhost:8080 (Docker container mode)
 - **Purpose**: Modernized application with decomposed architecture and AI features
 - **Status**: ACTIVE DEVELOPMENT - **ALL CHANGES SHOULD BE MADE HERE**
 
@@ -23,15 +23,15 @@ This repository contains TWO separate ASP.NET Core applications:
 
 When the user says:
 - "the app" → RetailDecomposed
-- "run the app" → `cd RetailDecomposed; dotnet run`
+- "run the app" → `.\run-both-apps.ps1` (Docker container mode)
 - "update the configuration" → RetailDecomposed/appsettings.Development.json
 - "modify Program.cs" → RetailDecomposed/Program.cs
 - "add a service" → RetailDecomposed/Services/
 - "update a page" → RetailDecomposed/Pages/
 
-### Port Reference
-- **RetailMonolith**: http://localhost:5068 (DO NOT USE unless explicitly requested)
-- **RetailDecomposed**: http://localhost:6068 (DEFAULT - ALWAYS USE)
+### Port Reference (Docker Container Mode)
+- **RetailMonolith**: http://localhost:5068
+- **RetailDecomposed**: http://localhost:8080 (DEFAULT)
 
 ### File Paths
 When editing files, always use paths in the RetailDecomposed directory:
@@ -44,13 +44,10 @@ When editing files, always use paths in the RetailDecomposed directory:
 ### Running the Application
 **Default command**:
 ```powershell
-cd RetailDecomposed; dotnet run
+.\run-both-apps.ps1
 ```
 
-**NOT**:
-```powershell
-dotnet run  # This runs RetailMonolith from root
-```
+This runs both applications in Docker containers. The default mode is `container`.
 
 ### Configuration Files
 - **Active**: `RetailDecomposed/appsettings.Development.json`
@@ -84,9 +81,9 @@ dotnet run  # This runs RetailMonolith from root
 ## Development Workflow
 
 1. **Before any code changes**: Verify you're working in `RetailDecomposed/`
-2. **When running the app**: Use `cd RetailDecomposed; dotnet run`
-3. **When testing**: Navigate to http://localhost:6068 (HTTPS)
-4. **When debugging**: Monitor logs from RetailDecomposed process
+2. **When running the app**: Use `.\run-both-apps.ps1` (container mode)
+3. **When testing**: Navigate to http://localhost:8080
+4. **When debugging**: Monitor Docker container logs with `docker-compose -f RetailDecomposed/docker-compose.microservices.yml logs -f`
 
 ## Data Seeding Rules
 
@@ -229,6 +226,48 @@ Before committing any database changes:
 - [ ] Set up Application Insights for monitoring
 - [ ] Configure logging levels (reduce verbosity in production)
 
+## Post-Development Cleanup
+
+### 🧹 Automatic Tidying Protocol
+**After successful run of apps (local containers and Azure) and all tests pass:**
+
+Perform comprehensive cleanup automatically:
+
+1. **Code Quality**
+   - Remove unused imports and variables
+   - Fix code style inconsistencies
+   - Update outdated comments
+   - Remove TODO/FIXME comments that are resolved
+   - Ensure professional terminology (no "hack", "temp", "quick fix")
+
+2. **File Management**
+   - Delete obsolete test result files (already in .gitignore)
+   - Remove temporary or duplicate files
+   - Clean up unused assets or resources
+   - Remove commented-out code blocks
+
+3. **Documentation Consolidation**
+   - Fix broken internal links between .md files
+   - Merge duplicate documentation
+   - Update outdated information
+   - Add cross-references between related guides
+   - Ensure "Last Updated" dates are current
+   - Consolidate session-specific notes into main docs
+
+4. **Best Practices**
+   - Prefer updating existing docs over creating new files
+   - Keep single source of truth for each topic
+   - Maintain primary documentation structure (see below)
+   - Delete superseded documentation after consolidation
+
+**Primary Documentation Structure:**
+- `/Tests/README.md` - Test overview and configuration
+- `/Tests/TEST_RESULTS.md` - Consolidated test results
+- `/RetailDecomposed/DEPLOYMENT_GUIDE.md` - Deployment instructions
+- `/MONOLITH_DEPLOYMENT_GUIDE.md` - AKS deployment for monolith
+- `/README.md` - Main project README
+- `/.github/copilot-instructions.md` - This file
+
 ---
 
-**Remember**: Unless explicitly stated otherwise by the user, ALL work is on **RetailDecomposed** running at **http://localhost:6068**.
+**Remember**: Unless explicitly stated otherwise by the user, ALL work is on **RetailDecomposed** running at **http://localhost:8080**.

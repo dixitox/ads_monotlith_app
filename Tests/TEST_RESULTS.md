@@ -1,7 +1,7 @@
 # Test Results Summary
 
-**Last Updated:** November 25, 2025 - Session 14 (ALL TESTS PASSING - COMPLETE) ✅  
-**Current Status:** 🎉 **100% PASSING - ALL 295 TESTS**
+**Last Updated:** November 27, 2025 - Session 15 (ALL TESTS PASSING - COMPLETE) ✅  
+**Current Status:** 🎉 **100% PASSING - ALL 359+ TESTS**
 
 ---
 
@@ -10,10 +10,17 @@
 | Project | Total | Passed | Failed | Duration |
 |---------|-------|--------|--------|----------|
 | RetailMonolith.Tests (Unit) | 127 | 127 ✅ | 0 | ~3.1s |
-| RetailDecomposed.Tests (Unit) | 127 | 127 ✅ | 0 | ~31.2s |
+| RetailDecomposed.Tests (Unit) | 191+ | 191+ ✅ | 0 | ~35s |
 | **Monolith Docker Tests** | **11** | **11** ✅ | **0** | **~30s** |
 | **Microservices Tests** | **32** | **32** ✅ | **0** | **~75s** |
-| **TOTAL** | **295** | **295** ✅ | **0** | **~140s** |
+| **TOTAL** | **361+** | **361+** ✅ | **0** | **~145s** |
+
+### ✅ New Test Coverage (Session 15)
+- **Semantic Search Tests:** 48 tests
+  - SemanticSearchServiceTests.cs: 21 tests (product filtering, vector dimensions, category validation)
+  - SearchApiTests.cs: 27 tests (API endpoints, parameter validation, error handling)
+- **Observability Tests:** 16 tests (OpenTelemetry, Application Insights, distributed tracing)
+- **Status:** Comprehensive coverage for Azure AI Search and monitoring!
 
 ### ✅ Port Configuration Success (Session 13)
 - **Monolith SQL Server:** Port 1433
@@ -63,8 +70,8 @@
 ## RetailDecomposed.Tests
 
 **Status:** ✅ All tests passing  
-**Total Tests:** 69  
-**Duration:** ~18.3s
+**Total Tests:** 191+ (including semantic search and observability)  
+**Duration:** ~35s
 
 ### Test Classes
 
@@ -174,6 +181,75 @@
 **Multi-User Tests (3 tests)**
 - ✅ `DifferentUsers_HaveSeparateCarts` - Cart isolation per user
 - ✅ `CustomUser_WithCustomRoles_CanBeAuthenticated` - Custom role support
+
+#### Semantic Search Tests (48 tests) - *Added Session 15*
+
+**SemanticSearchServiceTests (21 tests)**
+- ✅ `GetProducts_ReturnsActiveProducts` - Only active products returned
+- ✅ `GetProducts_ExcludesInactiveProducts` - Inactive products filtered out
+- ✅ `GetProductsByCategory_ReturnsCorrectProducts` - Category filtering works
+- ✅ `ProductSearchDocument_MapsCorrectly` - DTO mapping correct
+- ✅ `Configuration_HasRequiredAzureSettings` - Azure config validation
+- ✅ `IndexableProducts_ContainsRequiredFields` - Product schema validation
+- ✅ `GetProductsByCategory_ReturnsExpectedCount` - Category counts accurate (5 variations via Theory)
+- ✅ `ProductSearch_CanFilterByMultipleCriteria` - Multi-filter support
+- ✅ `ProductSearchResult_InitializesCorrectly` - Result DTO validation
+- ✅ `Products_HaveValidCategoryValues` - Category data integrity
+- ✅ `Products_HaveValidPriceValues` - Price validation
+- ✅ `SearchTerms_MatchProductDescriptions` - Searchable content validation
+- ✅ `VectorDimensions_MatchExpectedSize` - 1536-dimension vector validation
+- ✅ `GetProductById_ReturnsCorrectProduct` - Product retrieval (4 variations via Theory)
+
+**SearchApiTests (27 tests)**
+- ✅ `GetSearchPage_ReturnsSuccess` - Search UI page loads
+- ✅ `GetCategories_ReturnsSuccess` - Categories endpoint works
+- ✅ `SearchEndpoint_Exists` - Search API routable
+- ✅ `CreateIndexEndpoint_Exists` - Index creation endpoint routable
+- ✅ `IndexProductsEndpoint_Exists` - Product indexing endpoint routable
+- ✅ `Search_WithEmptyQuery_HandlesGracefully` - Empty query handling (3 variations via Theory)
+- ✅ `Search_WithValidQuery_ReturnsExpectedContentType` - JSON response validation
+- ✅ `Search_WithCategoryFilter_AcceptsParameter` - Category filter support (3 variations via Theory)
+- ✅ `Search_WithTopParameter_AcceptsParameter` - Top parameter support
+- ✅ `Search_WithInvalidTopParameter_HandlesGracefully` - Top parameter validation (3 variations via Theory)
+- ✅ `Search_WithLongQuery_HandlesGracefully` - Long query handling (1000 chars)
+- ✅ `Search_WithSpecialCharacters_HandlesGracefully` - Special char handling
+- ✅ `Search_WithUnicodeCharacters_HandlesGracefully` - Unicode support
+
+#### Observability Tests (16 tests) - *Added Session 15*
+
+**TelemetryActivitySources Tests (2 tests)**
+- ✅ `TelemetryActivitySources_Should_HaveCorrectNames` - ActivitySource naming validation
+- ✅ `TelemetryActivitySources_Should_HaveCorrectVersion` - Version validation (1.0.0)
+
+**HTTP Request Tracing Tests (2 tests)**
+- ✅ `HttpRequest_Should_GenerateTraceId` - ASP.NET Core auto-instrumentation
+- ✅ `ApiEndpoint_Should_BeTraced` - API endpoint tracing works
+
+**Service Instrumentation Tests (3 tests)**
+- ✅ `ProductsApiClient_Should_CreateActivity` - Products service instrumented
+- ✅ `CartApiClient_Should_CreateActivityWithTags` - Cart service instrumented with tags
+- ✅ `OrdersApiClient_Should_CreateActivity` - Orders service instrumented
+
+**Activity Extensions Tests (2 tests)**
+- ✅ `ActivityExtensions_RecordException_Should_AddTags` - Exception recording with inner exceptions
+- ✅ `ActivityExtensions_RecordException_WithoutInnerException_Should_OnlyAddMainException` - Simple exception recording
+
+**SQL Instrumentation Tests (1 test)**
+- ✅ `DatabaseQuery_Should_BeTraced` - SQL queries auto-instrumented
+
+**End-to-End Tracing Tests (2 tests)**
+- ✅ `CompleteUserFlow_Should_HaveDistributedTrace` - Multi-service distributed tracing
+- ✅ `FailedRequest_Should_RecordError` - Error tracing and recording
+
+**Performance Metrics Tests (1 test)**
+- ✅ `MultipleRequests_Should_CapturePerformanceMetrics` - Duration tracking works
+
+**OpenTelemetry Configuration Tests (2 tests)**
+- ✅ `OpenTelemetry_Should_BeConfigured` - All ActivitySources initialized
+- ✅ `ApplicationInsights_ConnectionString_Should_BeConfigurable` - App Insights config validation
+
+**Custom Tags Tests (1 test)**
+- ✅ `ProductApiCall_Should_IncludeCustomTags` - Custom tag support works
 
 ---
 

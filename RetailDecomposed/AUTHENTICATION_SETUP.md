@@ -245,7 +245,7 @@ frontend-service:
 
 #### Important: Update Redirect URIs for Container Mode
 
-When running in containers, the app is accessible at `http://localhost:8080` instead of `https://localhost:6068`. Update your Azure App Registration:
+**Container mode is the primary way to run applications.** The app is accessible at `http://localhost:8080` in Docker containers. Update your Azure App Registration:
 
 1. Go to **Azure Portal** → **App registrations** → Your app
 2. Go to **Authentication**

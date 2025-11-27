@@ -5,7 +5,7 @@ using RetailMonolith.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// DB – localdb for hack; swap to SQL in appsettings for Azure
+// Database configuration: LocalDB for development, SQL Server for production
 // Use InMemory database for testing environment
 if (builder.Environment.EnvironmentName == "Testing")
 {
@@ -29,7 +29,7 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-// auto-migrate & seed (hack convenience) - skip for testing environment
+// Auto-migrate and seed database in non-testing environments
 if (app.Environment.EnvironmentName != "Testing")
 {
     using (var scope = app.Services.CreateScope())

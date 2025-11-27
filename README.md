@@ -46,27 +46,9 @@ It includes product listing, shopping cart, checkout, and inventory management �
 
 ## Development Setup
 
-You can run and edit this application in three different ways:
+You can run and edit this application in two different ways:
 
-### 1. Local Development Environment
-
-Run the application directly on your local machine with your preferred IDE or editor.
-
-**Prerequisites:**
-- .NET 9 SDK installed ([download](https://dotnet.microsoft.com/download/dotnet/9.0))
-- SQL Server LocalDB (included with Visual Studio) or SQL Server instance
-- Your favorite code editor (Visual Studio, VS Code, Rider, etc.)
-
-**Steps:**
-```bash
-git clone https://github.com/lavann/ads_monotlith_app.git
-cd ads_monotlith_app
-dotnet restore
-dotnet ef database update
-dotnet run
-```
-
-### 2. Docker-Hosted Dev Container
+### 1. Docker-Hosted Dev Container
 
 Use a Docker container with a pre-configured development environment. This ensures consistency across different machines without installing dependencies locally.
 
@@ -81,7 +63,7 @@ Use a Docker container with a pre-configured development environment. This ensur
 4. VS Code will build and start the dev container with all dependencies pre-installed
 5. Run `dotnet ef database update` and `dotnet run` inside the container terminal
 
-### 3. GitHub Codespaces
+### 2. GitHub Codespaces
 
 Develop entirely in the cloud with zero local setup. Codespaces provides a full VS Code environment in your browser.
 
@@ -96,7 +78,9 @@ Develop entirely in the cloud with zero local setup. Codespaces provides a full 
 5. Wait for the environment to initialize
 6. Run `dotnet ef database update` and `dotnet run` in the integrated terminal
 
-All three environments provide the same development experience with the .NET SDK, C# extension, and all necessary tools pre-configured.
+Both environments provide the same development experience with the .NET SDK, C# extension, and all necessary tools pre-configured.
+
+**Note**: For running the application, use the Docker container mode via `.\run-both-apps.ps1`. Direct `dotnet run` is not supported as the application requires Docker for SQL Server and microservices.
 
 ---
 
@@ -149,20 +133,11 @@ dotnet run
 - **Microservices APIs**: http://localhost:8081-8084
 
 **Advanced options:**
-- Skip rebuild (faster): `.\run-both-apps.ps1 -Mode container -SkipRebuild`
-- Clean rebuild: `.\run-both-apps.ps1 -Mode container -NoCache`
+- Skip rebuild (faster): `.\run-both-apps.ps1 -SkipRebuild`
+- Clean rebuild: `.\run-both-apps.ps1 -NoCache`
 - See [CONTAINER_REBUILD_IMPROVEMENTS.md](CONTAINER_REBUILD_IMPROVEMENTS.md) for details
 
-### Local Development (.NET)
-```powershell
-.\run-both-apps.ps1 -Mode local
-```
-
-**Access URLs:**
-- **RetailMonolith**: http://localhost:5068
-- **RetailDecomposed**: http://localhost:6068
-
-### Azure Container Apps (Cloud)
+### Azure Kubernetes Service (Cloud)
 ```powershell
 # Auto-detect (no resource group needed - works across multiple resource groups!)
 .\run-both-apps.ps1 -Mode azure
@@ -266,9 +241,9 @@ See **[DEPLOYMENT_IMPROVEMENTS.md](DEPLOYMENT_IMPROVEMENTS.md)** for automated A
 
 ## Testing 🧪
 
-**✅ 100% Passing - All 295 Tests**
+**✅ 100% Passing - All 361+ Tests**
 
-Comprehensive testing suite covering unit tests, integration tests, and full Docker deployment validation.
+Comprehensive testing suite covering unit tests, integration tests, semantic search, observability, and full Docker deployment validation.
 
 ### Quick Start
 ```powershell
@@ -289,10 +264,10 @@ dotnet test
 | Test Suite | Tests | Status | Duration |
 |------------|-------|--------|----------|
 | RetailMonolith.Tests | 127 | ✅ 100% | ~3s |
-| RetailDecomposed.Tests | 127 | ✅ 100% | ~31s |
+| RetailDecomposed.Tests | 191+ | ✅ 100% | ~35s |
 | Monolith Docker | 11 | ✅ 100% | ~30s |
 | Microservices | 32 | ✅ 100% | ~75s |
-| **Total** | **295** | **✅ 100%** | **~140s** |
+| **Total** | **361+** | **✅ 100%** | **~145s** |
 
 ### Port Configuration
 **Both systems run simultaneously!**
@@ -302,14 +277,15 @@ dotnet test
 
 ### What's Tested
 - ✅ All pages: Products, Cart, Orders, Checkout, AI Copilot
-- ✅ API endpoints (Products, Cart, Orders, Checkout)
+- ✅ API endpoints (Products, Cart, Orders, Checkout, Search)
 - ✅ Authentication & Authorization (Azure AD simulation)
 - ✅ Database connectivity and migrations
 - ✅ Docker container health checks
 - ✅ Inter-service communication (microservices)
 - ✅ Response time performance
 - ✅ AI Copilot API and UI
-- ✅ Observability (OpenTelemetry tracing)
+- ✅ Semantic Search (Azure AI Search integration - 48 tests)
+- ✅ Observability (OpenTelemetry, Application Insights - 16 tests)
 
 ### Documentation
 - **[Tests/README.md](Tests/README.md)** - Complete testing guide with port configuration

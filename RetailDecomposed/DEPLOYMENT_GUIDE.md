@@ -2,6 +2,8 @@
 
 This guide covers deploying the RetailDecomposed application to Azure App Service with production-ready configuration.
 
+> **Note**: For deploying the legacy RetailMonolith application to AKS, see [MONOLITH_DEPLOYMENT_GUIDE.md](../MONOLITH_DEPLOYMENT_GUIDE.md)
+
 ## Table of Contents
 
 1. [Overview](#overview)

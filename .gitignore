@@ -70,6 +70,8 @@ docker-compose.override.yml
 # Test results
 test-results-*.json
 test-results-*.xml
+aks-test-results-*.json
+microservices-test-report-*.html
 TestResults/
 
 # Docker volumes data

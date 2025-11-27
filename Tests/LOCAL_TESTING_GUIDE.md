@@ -1,7 +1,9 @@
-# Local Testing with Docker Compose
+# Docker Container Testing Guide
+
+**Last Updated**: November 27, 2025
 
 ## Overview
-This guide helps you test RetailMonolith locally using Docker Compose before deploying to Azure.
+This guide covers comprehensive testing of the **RetailMonolith** application running in Docker containers. The application uses **Docker container mode exclusively** - direct `dotnet run` execution is not supported.
 
 ## Prerequisites
 - Docker Desktop installed and running
