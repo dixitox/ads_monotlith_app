@@ -72,6 +72,9 @@ End-to-end tests that validate the complete Docker environment with real SQL Ser
 
 See [LOCAL_TESTING_GUIDE.md](./LOCAL_TESTING_GUIDE.md) for detailed Docker testing documentation.
 
+### 3. Azure Container Apps Tests (Cloud Deployment)
+Comprehensive tests for Azure-deployed microservices including health checks, UI tests, performance, security, and availability.
+
 ## Test Projects
 
 ### 1. RetailMonolith.Tests
@@ -99,15 +102,30 @@ Functional tests for the decomposed application with API endpoints.
 ## Running Tests
 
 ### Run All Tests (Unit + Integration + Docker)
+
 ```powershell
 # From repository root
 .\Tests\run-all-tests.ps1
 ```
 
 This runs:
+
 1. RetailMonolith unit/integration tests
 2. RetailDecomposed unit/integration tests  
 3. Docker Compose local deployment tests
+4. Microservices deployment tests
+
+### Run All Tests Including Azure Deployment
+
+```powershell
+# Set environment variables for Azure testing
+$env:AZURE_FRONTEND_URL = "https://retaildecomposed-frontend.uksouth.azurecontainerapps.io"
+$env:AZURE_RESOURCE_GROUP = "rg-retail-decomposed"  # Optional
+$env:SKIP_AZURE_CONTAINER_CHECKS = "false"  # Optional
+
+# Run all tests
+.\Tests\run-all-tests.ps1
+```
 
 ### Run Unit Tests Only
 
@@ -124,6 +142,7 @@ dotnet test .\Tests\RetailDecomposed.Tests\RetailDecomposed.Tests.csproj
 ```
 
 ### Run Docker Compose Tests Only
+
 ```powershell
 # Complete workflow (build, start, test, cleanup)
 .\Tests\run-local-tests.ps1
@@ -133,6 +152,28 @@ dotnet test .\Tests\RetailDecomposed.Tests\RetailDecomposed.Tests.csproj
 ```
 
 See [LOCAL_TESTING_GUIDE.md](./LOCAL_TESTING_GUIDE.md) for detailed Docker testing documentation.
+
+### Run Azure Container Apps Tests Only
+
+```powershell
+# Test Azure deployment with all checks
+.\Tests\test-azure-deployment.ps1 -FrontendUrl "https://retaildecomposed-frontend.uksouth.azurecontainerapps.io" -ResourceGroup "rg-retail-decomposed"
+
+# Test without Azure Container Apps status checks (if you don't have Azure CLI access)
+.\Tests\test-azure-deployment.ps1 -FrontendUrl "https://retaildecomposed-frontend.uksouth.azurecontainerapps.io" -SkipContainerChecks
+```
+
+The Azure test suite includes:
+
+- ✅ Container Apps health and status (optional)
+- ✅ Frontend UI page load tests
+- ✅ Authentication and login tests
+- ✅ Static assets (CSS, JS) loading
+- ✅ Performance and response time analysis
+- ✅ SSL/TLS and security header checks
+- ✅ Error handling (404, invalid IDs)
+- ✅ Service availability and reliability (10 rapid requests)
+- 📊 HTML and JSON reports generated automatically
 
 ### Run Tests with Detailed Output
 ```powershell
@@ -244,11 +285,14 @@ dotnet test --filter "MyNewTests"
 
 ## Test Metrics
 
-| Project | Test Files | Test Cases | Coverage |
-|---------|-----------|------------|----------|
+| Test Suite | Test Files | Test Cases | Coverage |
+|------------|-----------|------------|----------|
 | RetailMonolith.Tests | 4 | ~15 | Pages |
-| RetailDecomposed.Tests | 3 | ~20 | APIs + Pages |
-| **Total** | **7** | **~35** | **Full Stack** |
+| RetailDecomposed.Tests | 3 | ~127 | APIs + Pages + Observability |
+| Docker Compose Tests | 2 | ~11 | Monolith Deployment |
+| Microservices Tests | 1 | ~32 | Local Microservices |
+| Azure Deployment Tests | 1 | ~25 | Cloud Deployment |
+| **Total** | **11** | **~210** | **Full Stack + Cloud** |
 
 ## Best Practices
 

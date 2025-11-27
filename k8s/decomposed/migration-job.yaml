@@ -1,16 +1,24 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: frontend-migration
+  name: create-dataprotection-table
   namespace: retail-decomposed
 spec:
   template:
     spec:
       serviceAccountName: retail-decomposed-sa
       containers:
-      - name: migration
-        image: acrretaildecomposed.azurecr.io/retail-decomposed-frontend:latest
-        command: ["dotnet", "ef", "migrations", "add", "AddDataProtectionKeys"]
+      - name: create-table
+        image: mcr.microsoft.com/mssql-tools
+        command:
+        - /bin/bash
+        - -c
+        - |
+          /opt/mssql-tools/bin/sqlcmd -S $(echo $ConnectionStrings__DefaultConnection | grep -oP 'Server=\K[^;]+') \
+            -d $(echo $ConnectionStrings__DefaultConnection | grep -oP 'Database=\K[^;]+') \
+            -U $(echo $ConnectionStrings__DefaultConnection | grep -oP 'User Id=\K[^;]+') \
+            -P $(echo $ConnectionStrings__DefaultConnection | grep -oP 'Password=\K[^;]+') \
+            -Q "IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='DataProtectionKeys') CREATE TABLE DataProtectionKeys (Id INT IDENTITY(1,1) PRIMARY KEY, FriendlyName NVARCHAR(MAX), Xml NVARCHAR(MAX))"
         envFrom:
         - configMapRef:
             name: retail-decomposed-config

@@ -74,3 +74,13 @@ TestResults/
 
 # Docker volumes data
 sqlserver-data/
+
+# Temporary configuration files
+temp-*.json
+azure-config-*.json
+
+# TLS certificates (generated locally)
+tls.crt
+tls.key
+*.pem
+*.pfx

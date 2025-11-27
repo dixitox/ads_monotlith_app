@@ -18,6 +18,12 @@
     - Runs database migrations
     - Shows deployment status and access information
 
+.PARAMETER ResourceGroup
+    Azure Resource Group name (default: rg-retail-monolith)
+
+.PARAMETER AksName
+    Optional: AKS cluster name. If not provided, script will discover it.
+
 .PARAMETER Namespace
     Kubernetes namespace (default: retail-monolith)
 
@@ -32,9 +38,14 @@
 
 .EXAMPLE
     .\deploy-monolith.ps1 -WaitForReady
+
+.EXAMPLE
+    .\deploy-monolith.ps1 -ResourceGroup "my-rg" -AksName "my-aks"
 #>
 
 param(
+    [string]$ResourceGroup = "rg-retail-monolith",
+    [string]$AksName,
     [string]$Namespace = "retail-monolith",
     [switch]$SkipIngressInstall,
     [switch]$WaitForReady
@@ -72,13 +83,140 @@ Write-Host @"
 ╚═══════════════════════════════════════════════════════════════╝
 "@ -ForegroundColor Cyan
 
-# Check kubectl
-Write-Step "Checking kubectl configuration..."
+# Discover AKS cluster if not provided
+if ([string]::IsNullOrEmpty($AksName)) {
+    Write-Step "Discovering AKS cluster..."
+    
+    # Check if resource group exists
+    $rgExists = az group show --name $ResourceGroup 2>$null
+    if (-not $rgExists) {
+        Write-Error "Resource group '$ResourceGroup' not found. Please run setup-azure-infrastructure-monolith.ps1 first."
+        exit 1
+    }
+    
+    # Get AKS cluster from resource group
+    $aksList = az aks list --resource-group $ResourceGroup --query "[].name" -o tsv
+    
+    if ([string]::IsNullOrEmpty($aksList)) {
+        Write-Error "No AKS cluster found in resource group '$ResourceGroup'"
+        Write-Host "  Please run setup-azure-infrastructure-monolith.ps1 first or provide -AksName parameter" -ForegroundColor Yellow
+        exit 1
+    }
+    
+    # Take the first AKS if multiple exist
+    $AksName = ($aksList -split "`n")[0].Trim()
+    Write-Success "Discovered AKS cluster: $AksName"
+}
+
+# Check and configure SQL Server network access
+Write-Step "Configuring SQL Server network access..."
+$sqlServers = az sql server list --resource-group $ResourceGroup --query "[].name" -o tsv
+if (-not [string]::IsNullOrEmpty($sqlServers)) {
+    $sqlServerName = ($sqlServers -split "`n")[0].Trim()
+    Write-Host "  Found SQL Server: $sqlServerName" -ForegroundColor Yellow
+    
+    # Check public network access status
+    $publicAccess = az sql server show --resource-group $ResourceGroup --name $sqlServerName --query "publicNetworkAccess" -o tsv 2>$null
+    
+    if ($publicAccess -eq "Disabled") {
+        Write-Warning "SQL Server public network access is disabled. Enabling..."
+        az sql server update --resource-group $ResourceGroup --name $sqlServerName --enable-public-network true 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Success "SQL Server public network access enabled"
+        } else {
+            Write-Warning "Failed to enable public network access"
+        }
+    } else {
+        Write-Success "SQL Server public network access is enabled"
+    }
+    
+    # Verify firewall rule for Azure services
+    $firewallRule = az sql server firewall-rule show --resource-group $ResourceGroup --server $sqlServerName --name AllowAzureServices 2>$null
+    if (-not $firewallRule) {
+        Write-Warning "Azure services firewall rule not found. Creating..."
+        az sql server firewall-rule create --resource-group $ResourceGroup --server $sqlServerName --name AllowAzureServices --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0 2>&1 | Out-Null
+        Write-Success "Azure services firewall rule created"
+    } else {
+        Write-Success "Azure services firewall rule exists"
+    }
+} else {
+    Write-Warning "No SQL Server found in resource group"
+}
+
+# Check AKS cluster status
+Write-Step "Checking AKS cluster status..."
+$aksStatus = az aks show --resource-group $ResourceGroup --name $AksName --query "powerState.code" -o tsv 2>$null
+
+if ($aksStatus -eq "Stopped") {
+    Write-Warning "AKS cluster is stopped. Starting cluster..."
+    Write-Host "  This may take 5-10 minutes..." -ForegroundColor Yellow
+    
+    az aks start --resource-group $ResourceGroup --name $AksName
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to start AKS cluster"
+        exit 1
+    }
+    Write-Success "AKS cluster started"
+} elseif ($aksStatus -eq "Running") {
+    Write-Success "AKS cluster is running"
+} else {
+    Write-Warning "AKS cluster status: $aksStatus"
+}
+
+# Get AKS credentials (force refresh)
+Write-Step "Connecting to AKS cluster..."
+Write-Host "  Getting credentials for: $AksName" -ForegroundColor Yellow
+
+# Clear any cached/stale kubectl config for this cluster
+$existingContext = kubectl config get-contexts -o name 2>$null | Where-Object { $_ -match $AksName }
+if ($existingContext) {
+    Write-Host "  Removing stale kubectl context..." -ForegroundColor Yellow
+    kubectl config delete-context $existingContext 2>&1 | Out-Null
+}
+
+# Get fresh credentials
+az aks get-credentials --resource-group $ResourceGroup --name $AksName --overwrite-existing
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to get AKS credentials"
+    exit 1
+}
+Write-Success "Connected to AKS cluster"
+
+# Verify kubectl connection
+Write-Step "Verifying kubectl connection..."
 try {
     $currentContext = kubectl config current-context
     Write-Success "kubectl context: $currentContext"
+    
+    # Test actual connectivity with retries (cluster might need a moment after starting)
+    Write-Host "  Testing cluster connectivity..." -ForegroundColor Yellow
+    $maxRetries = 3
+    $retryCount = 0
+    $connected = $false
+    
+    while ($retryCount -lt $maxRetries -and -not $connected) {
+        kubectl cluster-info 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            $connected = $true
+            Write-Success "Cluster is reachable"
+        } else {
+            $retryCount++
+            if ($retryCount -lt $maxRetries) {
+                Write-Host "  Retry $retryCount/$maxRetries..." -ForegroundColor Yellow
+                Start-Sleep -Seconds 10
+            }
+        }
+    }
+    
+    if (-not $connected) {
+        Write-Error "Cannot connect to cluster after $maxRetries attempts."
+        Write-Host "  Try running: az aks start --resource-group $ResourceGroup --name $AksName" -ForegroundColor Yellow
+        exit 1
+    }
 } catch {
-    Write-Error "kubectl not configured. Run 'az aks get-credentials' first."
+    Write-Error "kubectl not configured properly."
     exit 1
 }
 
@@ -115,19 +253,34 @@ if (-not $SkipIngressInstall) {
 }
 
 # Create namespace
-Write-Step "Creating namespace..."
-kubectl apply -f k8s/monolith/namespace.yaml
-Write-Success "Namespace '$Namespace' ready"
+Write-Step "Creating/Verifying namespace..."
+$existingNs = kubectl get namespace $Namespace --ignore-not-found 2>$null
+if ($existingNs) {
+    Write-Success "Namespace '$Namespace' already exists"
+} else {
+    kubectl apply -f k8s/monolith/namespace.yaml
+    Write-Success "Namespace '$Namespace' created"
+}
 
 # Apply ConfigMap
-Write-Step "Applying ConfigMap..."
+Write-Step "Applying/Updating ConfigMap..."
 kubectl apply -f k8s/monolith/configmap.yaml
-Write-Success "ConfigMap applied"
+if ($LASTEXITCODE -eq 0) {
+    Write-Success "ConfigMap applied"
+} else {
+    Write-Error "Failed to apply ConfigMap"
+    exit 1
+}
 
 # Apply Service Account
-Write-Step "Applying Service Account (for Azure AD authentication)..."
+Write-Step "Applying/Updating Service Account (for Azure AD authentication)..."
 kubectl apply -f k8s/monolith/serviceaccount.yaml
-Write-Success "Service Account applied"
+if ($LASTEXITCODE -eq 0) {
+    Write-Success "Service Account applied"
+} else {
+    Write-Error "Failed to apply Service Account"
+    exit 1
+}
 
 # Check for secrets file
 Write-Step "Checking secrets..."
@@ -165,23 +318,50 @@ if (-not (Test-Path $secretsFile)) {
     }
 } else {
     kubectl apply -f $secretsFile
-    Write-Success "Secrets applied"
+    if ($LASTEXITCODE -eq 0) {
+        Write-Success "Secrets applied/updated"
+    } else {
+        Write-Error "Failed to apply Secrets"
+        exit 1
+    }
 }
 
 # Apply Deployment
-Write-Step "Deploying application..."
+Write-Step "Deploying/Updating application..."
 kubectl apply -f k8s/monolith/deployment.yaml
-Write-Success "Deployment applied"
+if ($LASTEXITCODE -eq 0) {
+    Write-Success "Deployment applied"
+    
+    # Check if this is an update
+    Write-Host "  Waiting for rollout to complete..." -ForegroundColor Yellow
+    kubectl rollout status deployment/retail-monolith -n $Namespace --timeout=300s 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Success "Rollout completed successfully"
+    }
+} else {
+    Write-Error "Failed to apply Deployment"
+    exit 1
+}
 
 # Apply Service
-Write-Step "Creating service..."
+Write-Step "Creating/Updating service..."
 kubectl apply -f k8s/monolith/service.yaml
-Write-Success "Service applied"
+if ($LASTEXITCODE -eq 0) {
+    Write-Success "Service applied"
+} else {
+    Write-Error "Failed to apply Service"
+    exit 1
+}
 
 # Apply Ingress
-Write-Step "Creating ingress..."
+Write-Step "Creating/Updating ingress..."
 kubectl apply -f k8s/monolith/ingress.yaml
-Write-Success "Ingress applied"
+if ($LASTEXITCODE -eq 0) {
+    Write-Success "Ingress applied"
+} else {
+    Write-Error "Failed to apply Ingress"
+    exit 1
+}
 
 # Wait for pods to be ready
 if ($WaitForReady) {

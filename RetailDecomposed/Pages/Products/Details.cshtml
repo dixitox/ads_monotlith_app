@@ -46,7 +46,7 @@ else
                 <h1 class="display-5 mb-3">@Model.Product.Name</h1>
 
                 <div class="mb-4">
-                    <h2 class="text-primary">@Model.Product.Price.ToString("C") @Model.Product.Currency</h2>
+                    <h2 class="text-primary">£@Model.Product.Price.ToString("F2")</h2>
                 </div>
 
                 @if (!string.IsNullOrEmpty(Model.Product.Description))
@@ -184,7 +184,7 @@ else
                                 </tr>
                                 <tr>
                                     <th scope="row">Price</th>
-                                    <td>@Model.Product.Price.ToString("C") @Model.Product.Currency</td>
+                                    <td>£@Model.Product.Price.ToString("F2")</td>
                                 </tr>
                                 <tr>
                                     <th scope="row">Availability</th>

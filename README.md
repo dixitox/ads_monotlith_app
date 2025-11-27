@@ -128,22 +128,58 @@ dotnet run
 
 ---
 
-## Running the Application
+## 🚀 Quick Start - Running the Applications
 
-Start the application:
-```bash
-dotnet run
+**For detailed instructions**, see **[QUICK_START.md](QUICK_START.md)**
+
+### Fastest Way to Start (Docker Containers)
+```powershell
+.\run-both-apps.ps1 -Mode container
 ```
 
-Access the app at:
-- HTTP: `http://localhost:5068`
-- HTTPS: `https://localhost:7108`
+**What happens:**
+- ✅ **Automatically rebuilds containers** with latest code changes
+- ✅ Starts all 8 containers (2 apps + 4 microservices + 2 databases)
+- ✅ Verifies all services are healthy
+- ✅ Ready to test in ~90 seconds
 
-To specify a launch profile:
-```bash
-dotnet run --launch-profile http   # HTTP on port 5068
-dotnet run --launch-profile https  # HTTPS on port 7108
+**Access URLs:**
+- **RetailMonolith**: http://localhost:5068
+- **RetailDecomposed**: http://localhost:8080
+- **Microservices APIs**: http://localhost:8081-8084
+
+**Advanced options:**
+- Skip rebuild (faster): `.\run-both-apps.ps1 -Mode container -SkipRebuild`
+- Clean rebuild: `.\run-both-apps.ps1 -Mode container -NoCache`
+- See [CONTAINER_REBUILD_IMPROVEMENTS.md](CONTAINER_REBUILD_IMPROVEMENTS.md) for details
+
+### Local Development (.NET)
+```powershell
+.\run-both-apps.ps1 -Mode local
 ```
+
+**Access URLs:**
+- **RetailMonolith**: http://localhost:5068
+- **RetailDecomposed**: http://localhost:6068
+
+### Azure Container Apps (Cloud)
+```powershell
+# Auto-detect (no resource group needed - works across multiple resource groups!)
+.\run-both-apps.ps1 -Mode azure
+
+# Or specify resource group
+.\run-both-apps.ps1 -Mode azure -ResourceGroup myResourceGroup
+```
+
+**What happens:**
+- ✅ **Auto-detects Container Apps** across all resource groups
+- ✅ Checks status of all Azure Container Apps
+- ✅ Starts stopped containers automatically
+- ✅ Verifies health endpoints
+- ✅ Displays public URLs for all services
+- ✅ **Supports apps in different resource groups**
+
+**See [QUICK_START.md](QUICK_START.md) for full Azure mode documentation**
 
 ### Available Endpoints
 
@@ -152,6 +188,8 @@ dotnet run --launch-profile https  # HTTPS on port 7108
 | `/`                | Home Page             |
 | `/Products`        | Product catalogue     |
 | `/Cart`            | Shopping cart         |
+| `/Checkout`        | Checkout page         |
+| `/Orders`          | Order history         |
 | `/api/checkout`    | Checkout API          |
 | `/api/orders/{id}` | Order details API     |
 | `/health`          | Health check endpoint |
@@ -178,17 +216,18 @@ You can override the default connection string by setting the `ConnectionStrings
 - **Security**: HTTPS-only with TLS encryption
 - **High Availability**: 2 replicas with auto-healing
 
-### Complete Deployment Guide
-See **[MONOLITH_DEPLOYMENT_GUIDE.md](MONOLITH_DEPLOYMENT_GUIDE.md)** for:
-- Step-by-step deployment instructions
-- Azure infrastructure setup
-- Azure AD authentication configuration
-- Kubernetes manifests and configuration
-- Troubleshooting real issues encountered
-- Production hardening recommendations
-- Cost estimates and optimization tips
+### Complete Deployment Guides
 
-### Quick Deploy Summary
+**Monolith Deployment**:
+See **[MONOLITH_DEPLOYMENT_GUIDE.md](MONOLITH_DEPLOYMENT_GUIDE.md)** for complete AKS deployment with Azure AD authentication.
+
+**Microservices Deployment**:
+See **[RetailDecomposed/DEPLOYMENT_GUIDE.md](RetailDecomposed/DEPLOYMENT_GUIDE.md)** for microservices deployment.
+
+**Latest Improvements**:
+See **[DEPLOYMENT_IMPROVEMENTS.md](DEPLOYMENT_IMPROVEMENTS.md)** for automated Azure AI permissions and endpoint validation.
+
+### Quick Deploy (Monolith to AKS)
 ```powershell
 # 1. Create Azure infrastructure (ACR, AKS, SQL)
 .\setup-azure-infrastructure-monolith.ps1
@@ -203,7 +242,25 @@ See **[MONOLITH_DEPLOYMENT_GUIDE.md](MONOLITH_DEPLOYMENT_GUIDE.md)** for:
 .\deploy-monolith.ps1 -WaitForReady
 ```
 
-**Total deployment time**: ~30 minutes | **Monthly cost**: ~£115
+### Quick Deploy (Microservices to AKS)
+```powershell
+# 1. Setup infrastructure
+.\setup-azure-infrastructure-decomposed.ps1
+
+# 2. Build and push images
+.\build-and-push-decomposed.ps1
+
+# 3. Deploy with automated AI permissions
+.\deploy-decomposed.ps1
+```
+
+**Deployment includes:**
+- ✅ Automatic Azure AI permissions configuration
+- ✅ Cross-resource-group support
+- ✅ Endpoint validation and correction
+- ✅ Azure AD authentication setup
+
+**Total deployment time**: ~30 minutes | **Monthly cost**: ~£115-200
 
 ---
 

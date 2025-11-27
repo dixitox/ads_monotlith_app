@@ -28,16 +28,12 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.ForwardLimit = null;
 });
 
-// Configure Data Protection to use shared storage (database) for keys
-// This ensures all pods can decrypt authentication cookies
-var dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (!string.IsNullOrEmpty(dbConnectionString))
-{
-    builder.Services.AddDataProtection()
-        .PersistKeysToDbContext<AppDbContext>()
-        .SetApplicationName("RetailDecomposed")
-        .SetDefaultKeyLifetime(TimeSpan.FromDays(90));
-}
+// Configure Data Protection - Use in-memory keys for single-pod deployments
+// NOTE: With in-memory keys, users will need to re-login after pod restarts
+// For multi-pod deployments with database persistence, ensure DataProtectionKeys table exists
+builder.Services.AddDataProtection()
+    .SetApplicationName("RetailDecomposed")
+    .SetDefaultKeyLifetime(TimeSpan.FromDays(90));
 
 // Configure OpenTelemetry with Application Insights
 var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];

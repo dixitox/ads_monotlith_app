@@ -211,20 +211,45 @@ services:
       - CartServiceUrl=http://cart-service:8082
       - OrdersServiceUrl=http://orders-service:8083
       - CheckoutServiceUrl=http://checkout-service:8084
-      # Azure AD Authentication (configure these for production)
+      # Azure AD Authentication
+      # Create a .env file in RetailDecomposed directory with your credentials:
+      #   AZURE_AD_TENANT_ID=your-guid-here
+      #   AZURE_AD_CLIENT_ID=your-guid-here
+      #   AZURE_AD_DOMAIN=yourdomain.onmicrosoft.com
+      # See DOCKER_ENTRA_ID_SETUP.md for complete setup instructions
       - AzureAd__Instance=https://login.microsoftonline.com/
-      - AzureAd__TenantId=your-tenant-id
-      - AzureAd__ClientId=your-client-id
-      - AzureAd__Domain=your-domain.onmicrosoft.com
+      - AzureAd__TenantId=${AZURE_AD_TENANT_ID:-your-tenant-id}
+      - AzureAd__ClientId=${AZURE_AD_CLIENT_ID:-your-client-id}
+      - AzureAd__Domain=${AZURE_AD_DOMAIN:-your-domain.onmicrosoft.com}
       - AzureAd__CallbackPath=/signin-oidc
-      # Azure OpenAI (configure these for AI features)
-      - AzureAI__Endpoint=https://your-openai-resource.openai.azure.com/
-      - AzureAI__DeploymentName=gpt-4
-      # Azure AI Search (configure these for semantic search)
-      - AzureSearch__Endpoint=https://your-search-service.search.windows.net
-      - AzureSearch__IndexName=products-index
-      # Application Insights (optional)
-      - APPLICATIONINSIGHTS_CONNECTION_STRING=your-connection-string
+      # Azure OpenAI (optional - for AI Copilot features)
+      # Create these in your .env file if you want AI features:
+      #   AZURE_AI_ENDPOINT=https://your-resource.cognitiveservices.azure.com/
+      #   AZURE_AI_PROJECT_NAME=your-project-name
+      #   AZURE_AI_DEPLOYMENT_NAME=gpt-4o
+      #   AZURE_AI_MAX_TOKENS=4000
+      #   AZURE_AI_TEMPERATURE=0.7
+      - AzureAI__Endpoint=${AZURE_AI_ENDPOINT:-https://your-openai-resource.openai.azure.com/}
+      - AzureAI__ProjectName=${AZURE_AI_PROJECT_NAME:-}
+      - AzureAI__DeploymentName=${AZURE_AI_DEPLOYMENT_NAME:-gpt-4}
+      - AzureAI__MaxTokens=${AZURE_AI_MAX_TOKENS:-4000}
+      - AzureAI__Temperature=${AZURE_AI_TEMPERATURE:-0.7}
+      # Azure AI Search (optional - for semantic search features)
+      #   AZURE_SEARCH_ENDPOINT=https://your-search.search.windows.net
+      #   AZURE_SEARCH_INDEX_NAME=products-index
+      #   AZURE_SEARCH_EMBEDDING_DEPLOYMENT_NAME=text-embedding-ada-002
+      - AzureSearch__Endpoint=${AZURE_SEARCH_ENDPOINT:-https://your-search-service.search.windows.net}
+      - AzureSearch__IndexName=${AZURE_SEARCH_INDEX_NAME:-products-index}
+      - AzureSearch__EmbeddingDeploymentName=${AZURE_SEARCH_EMBEDDING_DEPLOYMENT_NAME:-}
+      # Entra ID credentials for DefaultAzureCredential in Docker
+      # These allow the container to authenticate to Azure services using Service Principal
+      # Using the same SPN credentials as web app authentication
+      - AZURE_TENANT_ID=${AZURE_AD_TENANT_ID}
+      - AZURE_CLIENT_ID=${AZURE_AD_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_AD_CLIENT_SECRET}
+      # Application Insights (optional - for monitoring)
+      #   APPLICATIONINSIGHTS_CONNECTION_STRING=InstrumentationKey=...
+      - APPLICATIONINSIGHTS_CONNECTION_STRING=${APPLICATIONINSIGHTS_CONNECTION_STRING:-}
     networks:
       retail-network:
         ipv4_address: 172.28.0.20

@@ -11,8 +11,11 @@
     - Tags the image with version and 'latest'
     - Pushes the image to Azure Container Registry
 
+.PARAMETER ResourceGroup
+    Name of the Azure Resource Group (default: rg-retail-monolith)
+
 .PARAMETER AcrName
-    Name of the Azure Container Registry (without .azurecr.io)
+    Optional: Name of the Azure Container Registry. If not provided, script will discover it.
 
 .PARAMETER Version
     Image version tag (default: uses current date and time)
@@ -21,14 +24,18 @@
     Skip building and only push existing image
 
 .EXAMPLE
-    .\build-and-push-monolith.ps1 -AcrName "acrretailmonolith"
+    .\build-and-push-monolith.ps1
+
+.EXAMPLE
+    .\build-and-push-monolith.ps1 -ResourceGroup "rg-retail-monolith" -Version "1.0.0"
 
 .EXAMPLE
     .\build-and-push-monolith.ps1 -AcrName "acrretailmonolith" -Version "1.0.0"
 #>
 
 param(
-    [Parameter(Mandatory=$true)]
+    [string]$ResourceGroup = "rg-retail-monolith",
+    
     [string]$AcrName,
     
     [string]$Version = (Get-Date -Format "yyyyMMdd-HHmmss"),
@@ -63,6 +70,31 @@ Write-Host @"
 ╚═══════════════════════════════════════════════════════════════╝
 "@ -ForegroundColor Cyan
 
+# Discover ACR if not provided
+if ([string]::IsNullOrEmpty($AcrName)) {
+    Write-Step "Discovering Azure Container Registry..."
+    
+    # Check if resource group exists
+    $rgExists = az group show --name $ResourceGroup 2>$null
+    if (-not $rgExists) {
+        Write-Error "Resource group '$ResourceGroup' not found. Please run setup-azure-infrastructure-monolith.ps1 first."
+        exit 1
+    }
+    
+    # Get ACR from resource group
+    $acrList = az acr list --resource-group $ResourceGroup --query "[].name" -o tsv
+    
+    if ([string]::IsNullOrEmpty($acrList)) {
+        Write-Error "No Azure Container Registry found in resource group '$ResourceGroup'"
+        Write-Host "  Please run setup-azure-infrastructure-monolith.ps1 first or provide -AcrName parameter" -ForegroundColor Yellow
+        exit 1
+    }
+    
+    # Take the first ACR if multiple exist
+    $AcrName = ($acrList -split "`n")[0].Trim()
+    Write-Success "Discovered ACR: $AcrName"
+}
+
 # Configuration
 $ImageName = "retail-monolith"
 $AcrLoginServer = "$AcrName.azurecr.io"
@@ -70,10 +102,11 @@ $FullImageName = "$AcrLoginServer/$ImageName"
 $DockerfilePath = "Dockerfile.monolith"
 
 Write-Host "`nConfiguration:" -ForegroundColor Yellow
-Write-Host "  ACR:           $AcrLoginServer"
-Write-Host "  Image:         $ImageName"
-Write-Host "  Version:       $Version"
-Write-Host "  Dockerfile:    $DockerfilePath"
+Write-Host "  Resource Group: $ResourceGroup"
+Write-Host "  ACR:            $AcrLoginServer"
+Write-Host "  Image:          $ImageName"
+Write-Host "  Version:        $Version"
+Write-Host "  Dockerfile:     $DockerfilePath"
 Write-Host ""
 
 # Check if Docker is running
@@ -106,6 +139,12 @@ if (-not $SkipBuild) {
     # Build Docker image
     Write-Step "Building Docker image..."
     Write-Host "  This may take a few minutes..." -ForegroundColor Yellow
+    
+    # Check if image already exists
+    $existingImage = docker images -q ${FullImageName}:latest 2>$null
+    if ($existingImage) {
+        Write-Host "  Existing image found - rebuilding..." -ForegroundColor Yellow
+    }
     
     docker build -f $DockerfilePath -t ${FullImageName}:$Version -t ${FullImageName}:latest .
     

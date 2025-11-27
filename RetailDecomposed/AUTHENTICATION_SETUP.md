@@ -173,6 +173,113 @@ Update the development settings file with your values:
 
 **⚠️ Security Note:** The `appsettings.json` file should always contain placeholder values only. Never commit real credentials to source control.
 
+### 3.3 Docker Container Configuration
+
+When running the application in Docker containers, you need to provide Azure AD credentials as environment variables. The Docker Compose file uses placeholder values by default, which causes the app to run in **no-auth mode**.
+
+#### Why Docker Containers Don't Use Entra ID by Default
+
+The `docker-compose.microservices.yml` file includes these placeholder environment variables:
+
+```yaml
+- AzureAd__TenantId=your-tenant-id
+- AzureAd__ClientId=your-client-id
+- AzureAd__Domain=your-domain.onmicrosoft.com
+```
+
+When the app starts, it validates these values. Since `"your-tenant-id"` and `"your-client-id"` are not valid GUIDs, the validation fails and the app automatically falls back to no-auth mode:
+
+```
+Azure AD not configured - using no-auth mode
+```
+
+#### Option A: Use Environment File (Recommended)
+
+Create a `.env` file in the `RetailDecomposed` directory (this file is in `.gitignore`):
+
+```bash
+# .env file for Docker Compose
+AZURE_AD_TENANT_ID=your-actual-tenant-id-here
+AZURE_AD_CLIENT_ID=your-actual-client-id-here
+AZURE_AD_DOMAIN=yourdomain.onmicrosoft.com
+```
+
+Then update `docker-compose.microservices.yml` to use these variables:
+
+```yaml
+frontend-service:
+  environment:
+    - AzureAd__TenantId=${AZURE_AD_TENANT_ID}
+    - AzureAd__ClientId=${AZURE_AD_CLIENT_ID}
+    - AzureAd__Domain=${AZURE_AD_DOMAIN}
+```
+
+Docker Compose will automatically load the `.env` file.
+
+#### Option B: Set Environment Variables Before Running
+
+Set environment variables in your PowerShell session before starting containers:
+
+```powershell
+$env:AZURE_AD_TENANT_ID = "your-actual-tenant-id-here"
+$env:AZURE_AD_CLIENT_ID = "your-actual-client-id-here"
+$env:AZURE_AD_DOMAIN = "yourdomain.onmicrosoft.com"
+
+# Then run the containers
+.\run-both-apps.ps1 -Mode container
+```
+
+#### Option C: Edit Docker Compose File Directly (Not Recommended for Shared Repos)
+
+If you're working alone, you can edit the values directly in `docker-compose.microservices.yml`:
+
+```yaml
+frontend-service:
+  environment:
+    - AzureAd__TenantId=12345678-1234-1234-1234-123456789abc
+    - AzureAd__ClientId=87654321-4321-4321-4321-cba987654321
+    - AzureAd__Domain=yourdomain.onmicrosoft.com
+```
+
+**⚠️ Warning:** Make sure not to commit real credentials if the file is in source control!
+
+#### Important: Update Redirect URIs for Container Mode
+
+When running in containers, the app is accessible at `http://localhost:8080` instead of `https://localhost:6068`. Update your Azure App Registration:
+
+1. Go to **Azure Portal** → **App registrations** → Your app
+2. Go to **Authentication**
+3. Add redirect URI: `http://localhost:8080/signin-oidc`
+4. Add front-channel logout URL: `http://localhost:8080/signout-callback-oidc`
+5. Click **Save**
+
+#### Verify Authentication in Containers
+
+After starting containers with real credentials:
+
+```powershell
+# Check the logs to verify authentication is enabled
+docker logs retaildecomposed-frontend --tail 50
+```
+
+You should see:
+```
+Using Azure AD authentication with TenantId: your-tenant-id
+```
+
+Instead of:
+```
+Azure AD not configured - using no-auth mode
+```
+
+#### Testing Container Authentication
+
+1. Start containers with real Azure AD credentials
+2. Open `http://localhost:8080`
+3. Click **Sign in** button
+4. You should be redirected to Microsoft login page
+5. After sign-in, you'll be redirected back to the app
+
 ## Step 4: Run and Test the Application
 
 ### 4.1 Restore NuGet Packages
