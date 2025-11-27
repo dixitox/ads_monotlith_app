@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: retail-decomposed-config
+  namespace: retail-decomposed
+data:
+  ASPNETCORE_ENVIRONMENT: "Production"
+  
+  # Service URLs (internal cluster DNS)
+  PRODUCTS_SERVICE_URL: "http://products-service:8081"
+  CART_SERVICE_URL: "http://cart-service:8082"
+  ORDERS_SERVICE_URL: "http://orders-service:8083"
+  CHECKOUT_SERVICE_URL: "http://checkout-service:8084"
+  FRONTEND_SERVICE_URL: "http://frontend-service:8080"
+  
+  # Database Configuration (using Azure SQL)
+  DATABASE_NAME: "RetailDecomposedDB"
+  
+  # Application Insights
+  APPLICATIONINSIGHTS_ENABLE: "true"
+  
+  # Logging
+  Logging__LogLevel__Default: "Information"
+  Logging__LogLevel__Microsoft: "Warning"
+  Logging__LogLevel__Microsoft.Hosting.Lifetime: "Information"

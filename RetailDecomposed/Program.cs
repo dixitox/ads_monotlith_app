@@ -12,12 +12,36 @@ using Azure.Monitor.OpenTelemetry.AspNetCore;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Metrics;
+using Microsoft.AspNetCore.HttpOverrides;
+using System.Net;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure forwarded headers for running behind a proxy/ingress (MUST be before authentication)
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+    options.RequireHeaderSymmetry = false;
+    options.ForwardLimit = null;
+});
+
+// Configure Data Protection to use shared storage (database) for keys
+// This ensures all pods can decrypt authentication cookies
+var dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (!string.IsNullOrEmpty(dbConnectionString))
+{
+    builder.Services.AddDataProtection()
+        .PersistKeysToDbContext<AppDbContext>()
+        .SetApplicationName("RetailDecomposed")
+        .SetDefaultKeyLifetime(TimeSpan.FromDays(90));
+}
+
 // Configure OpenTelemetry with Application Insights
-var connectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
-if (!string.IsNullOrEmpty(connectionString))
+var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+if (!string.IsNullOrEmpty(appInsightsConnectionString))
 {
     builder.Services.AddOpenTelemetry()
         .ConfigureResource(resource => resource
@@ -27,7 +51,7 @@ if (!string.IsNullOrEmpty(connectionString))
                 serviceInstanceId: Environment.MachineName))
         .UseAzureMonitor(options =>
         {
-            options.ConnectionString = connectionString;
+            options.ConnectionString = appInsightsConnectionString;
         })
         .WithTracing(tracing => tracing
             .AddAspNetCoreInstrumentation(options =>
@@ -251,13 +275,21 @@ if (app.Environment.EnvironmentName != "Testing")
     }
 }
 
+// Use forwarded headers from proxy/ingress (MUST be first)
+app.UseForwardedHeaders();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// Only use HTTPS redirection in development (Kubernetes ingress handles HTTPS)
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseStaticFiles();
 app.UseRouting();
 
