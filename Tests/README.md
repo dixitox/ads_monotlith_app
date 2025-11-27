@@ -75,6 +75,9 @@ See [LOCAL_TESTING_GUIDE.md](./LOCAL_TESTING_GUIDE.md) for detailed Docker testi
 ### 3. Azure Container Apps Tests (Cloud Deployment)
 Comprehensive tests for Azure-deployed microservices including health checks, UI tests, performance, security, and availability.
 
+### 4. Azure Kubernetes Service (AKS) Tests
+Automated test suite for validating AKS-deployed applications including Kubernetes infrastructure, frontend UI, backend APIs, and Azure AD authentication.
+
 ## Test Projects
 
 ### 1. RetailMonolith.Tests
@@ -163,7 +166,7 @@ See [LOCAL_TESTING_GUIDE.md](./LOCAL_TESTING_GUIDE.md) for detailed Docker testi
 .\Tests\test-azure-deployment.ps1 -FrontendUrl "https://retaildecomposed-frontend.uksouth.azurecontainerapps.io" -SkipContainerChecks
 ```
 
-The Azure test suite includes:
+The Azure Container Apps test suite includes:
 
 - ✅ Container Apps health and status (optional)
 - ✅ Frontend UI page load tests
@@ -174,6 +177,40 @@ The Azure test suite includes:
 - ✅ Error handling (404, invalid IDs)
 - ✅ Service availability and reliability (10 rapid requests)
 - 📊 HTML and JSON reports generated automatically
+
+### Run Azure Kubernetes Service (AKS) Tests Only
+
+```powershell
+# Test AKS deployment (auto-detects ingress IP from cluster)
+.\Tests\test-aks-deployment.ps1
+
+# Requires:
+# - kubectl configured with AKS cluster context
+# - NGINX ingress controller deployed
+# - Application deployed in 'retail-decomposed' namespace
+```
+
+The AKS test suite includes:
+
+- ✅ **Kubernetes Infrastructure** (12 tests)
+  - Pod status and health (all pods Running and Ready)
+  - Service configurations (ClusterIP, ports)
+  - Ingress configuration (NGINX, TLS, external IP)
+  
+- ✅ **Frontend UI** (5 tests)
+  - Home, Products, Cart, Orders, Checkout pages
+  - HTTP status codes and content validation
+  
+- ✅ **Backend APIs** (3 tests)
+  - Products API (list and single product)
+  - Health endpoint checks
+  
+- ✅ **Authentication** (2 tests)
+  - Azure AD redirect flow
+  - OIDC callback endpoint
+
+- 📊 JSON results exported with timestamp
+- 🎯 Total: 22 automated tests across 4 categories
 
 ### Run Tests with Detailed Output
 ```powershell
@@ -291,8 +328,9 @@ dotnet test --filter "MyNewTests"
 | RetailDecomposed.Tests | 3 | ~127 | APIs + Pages + Observability |
 | Docker Compose Tests | 2 | ~11 | Monolith Deployment |
 | Microservices Tests | 1 | ~32 | Local Microservices |
-| Azure Deployment Tests | 1 | ~25 | Cloud Deployment |
-| **Total** | **11** | **~210** | **Full Stack + Cloud** |
+| Azure Container Apps Tests | 1 | ~25 | Cloud Deployment (ACA) |
+| Azure Kubernetes Tests | 1 | 22 | Cloud Deployment (AKS) |
+| **Total** | **12** | **~217** | **Full Stack + Cloud** |
 
 ## Best Practices
 
