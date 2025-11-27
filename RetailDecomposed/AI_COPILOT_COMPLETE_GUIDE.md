@@ -12,7 +12,8 @@ This guide provides a complete, step-by-step walkthrough for setting up and usin
 - **[SEMANTIC_SEARCH_GUIDE.md](SEMANTIC_SEARCH_GUIDE.md)** - Semantic search implementation and RBAC setup (includes AI Copilot roles)
 - **[AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md)** - Azure Entra ID setup for user authentication
 - **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Production deployment guide
-- **[TESTING_CHECKLIST.md](TESTING_CHECKLIST.md)** - Comprehensive testing guide
+- **[OBSERVABILITY_GUIDE.md](OBSERVABILITY_GUIDE.md)** - OpenTelemetry and monitoring setup
+- **[../Tests/README.md](../Tests/README.md)** - Comprehensive testing guide
 
 ---
 
@@ -169,26 +170,20 @@ If the commands succeed, you're ready to go!
 
 ### Step 7: Run the Application
 
-```bash
-# Make sure you're in the RetailDecomposed folder
-cd RetailDecomposed
-
-# Restore dependencies (if needed)
-dotnet restore
-
-# Run the application
-dotnet run
+```powershell
+# From the repository root directory
+.\run-both-apps.ps1
 ```
 
-You should see output like:
-```
-Initializing Azure AI client with Entra ID authentication
-Now listening on: https://localhost:6068
-```
+The script will:
+- Automatically start Docker Desktop if not running
+- Build and start all containers (approximately 90 seconds)
+- Verify all services are healthy
+- Display access URLs
 
 ### Step 8: Test the AI Assistant
 
-1. Open your browser and navigate to `https://localhost:6068`
+1. Open your browser and navigate to `http://localhost:8080`
 2. Click **AI Assistant** in the navigation bar
 3. Try a test message:
    - "What products do you have?"

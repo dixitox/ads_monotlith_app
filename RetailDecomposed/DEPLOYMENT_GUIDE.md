@@ -2,6 +2,8 @@
 
 This guide covers deploying the RetailDecomposed application to Azure App Service with production-ready configuration.
 
+> **Note**: For deploying the legacy RetailMonolith application to AKS, see [MONOLITH_DEPLOYMENT_GUIDE.md](../MONOLITH_DEPLOYMENT_GUIDE.md)
+
 ## Table of Contents
 
 1. [Overview](#overview)
@@ -481,14 +483,85 @@ Wait 5-10 minutes for RBAC propagation after assignment.
 
 **Total Estimated Cost**: ~$30-50/month (without Azure OpenAI usage)
 
+## AKS-Specific Troubleshooting
+
+### 502 Bad Gateway on Azure AD Sign-In
+
+**Symptom**: Sign-in redirects to Azure AD successfully, but callback to `/signin-oidc` returns 502 Bad Gateway
+
+**Root Cause**: Azure AD authentication generates very large response headers (state tokens, nonce cookies, correlation cookies) that exceed NGINX default buffer sizes.
+
+**Solution**: Increase NGINX ingress buffer sizes in `k8s/decomposed/ingress.yaml`:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
+    nginx.ingress.kubernetes.io/large-client-header-buffers: "4 32k"
+```
+
+Apply the changes:
+```powershell
+kubectl apply -f k8s/decomposed/ingress.yaml
+```
+
+### 503 Service Temporarily Unavailable
+
+**Symptom**: Accessing the ingress IP returns "503 Service Temporarily Unavailable"
+
+**Root Causes**:
+- Pods not running (CrashLoopBackOff)
+- Database connection failures
+- Missing or invalid secrets
+
+**Solution Steps**:
+
+1. Check pod status:
+   ```powershell
+   kubectl get pods -n retail-decomposed
+   ```
+   All pods should show `1/1 Running`
+
+2. Check pod logs:
+   ```powershell
+   kubectl logs <pod-name> -n retail-decomposed --tail=50
+   ```
+
+3. Common errors:
+   - **ConnectionString not initialized**: Update `ConnectionStrings__DefaultConnection` in `k8s/decomposed/secrets.yaml`
+   - **SQL authentication failed**: Grant AKS managed identity access to SQL Server
+   - **Public network access denied**: Enable public network access on SQL Server
+
+### Ingress IP Not Assigned
+
+**Symptom**: `kubectl get ingress` shows `<pending>` 
+
+**Solution**: Wait 2-3 minutes for Azure Load Balancer to provision. If still pending after 5 minutes, check:
+```powershell
+kubectl describe ingress retail-decomposed-ingress -n retail-decomposed
+kubectl get pods -n ingress-nginx
+```
+
+### Data Protection Keys Issue
+
+**Symptom**: "Unable to unprotect the message.State" or "No message" errors
+
+**Current Configuration**: Using in-memory Data Protection keys (single-pod deployment)
+
+**Limitation**: Users must re-login after pod restarts. For multi-pod deployments with persistent keys, ensure DataProtectionKeys table exists in the database or configure distributed cache.
+
 ## Additional Resources
 
 - [Azure App Service Documentation](https://learn.microsoft.com/azure/app-service/)
 - [Azure SQL Database Documentation](https://learn.microsoft.com/azure/azure-sql/)
 - [Azure RBAC Documentation](https://learn.microsoft.com/azure/role-based-access-control/)
 - [Managed Identity Documentation](https://learn.microsoft.com/azure/active-directory/managed-identities-azure-resources/)
+- [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/)
 
 ---
 
-**Last Updated**: 2025-01-23  
-**Tested With**: Azure CLI 2.66.0, .NET 9.0
+**Last Updated**: 2025-11-27  
+**Tested With**: Azure CLI 2.66.0, .NET 9.0, AKS 1.28

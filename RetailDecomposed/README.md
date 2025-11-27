@@ -8,7 +8,8 @@ A modernized retail application demonstrating decomposed microservices architect
 - **[AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md)** - Azure Entra ID user authentication setup
 - **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Production deployment to Azure
 - **[AI_COPILOT_COMPLETE_GUIDE.md](AI_COPILOT_COMPLETE_GUIDE.md)** - AI Copilot feature guide
-- **[TESTING_CHECKLIST.md](TESTING_CHECKLIST.md)** - Comprehensive testing guide
+- **[OBSERVABILITY_GUIDE.md](OBSERVABILITY_GUIDE.md)** - OpenTelemetry and Application Insights setup
+- **[../Tests/README.md](../Tests/README.md)** - Comprehensive testing guide
 
 ## 🏗️ Architecture Overview
 
@@ -130,13 +131,13 @@ dotnet restore
 # Run database migrations (if any)
 dotnet ef database update
 
-# Run the application
-dotnet run
+# Run the application in Docker containers
+cd ..
+.\run-both-apps.ps1
 ```
 
 Application will be available at:
-- HTTPS: https://localhost:6068
-- HTTP: http://localhost:6067
+- Frontend: http://localhost:8080
 
 ### Initialize Semantic Search
 

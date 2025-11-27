@@ -56,3 +56,33 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Kubernetes secrets (NEVER commit these!)
+k8s/**/secrets.yaml
+**/secrets.yaml
+
+# Docker compose override files with secrets
+docker-compose.override.yml
+
+# Environment files with secrets
+.env
+
+# Test results
+test-results-*.json
+test-results-*.xml
+aks-test-results-*.json
+microservices-test-report-*.html
+TestResults/
+
+# Docker volumes data
+sqlserver-data/
+
+# Temporary configuration files
+temp-*.json
+azure-config-*.json
+
+# TLS certificates (generated locally)
+tls.crt
+tls.key
+*.pem
+*.pfx

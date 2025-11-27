@@ -6,13 +6,13 @@ This repository contains TWO separate ASP.NET Core applications:
 
 ### 1. RetailMonolith (Legacy Monolithic Application)
 - **Location**: Root directory (`/`)
-- **Port**: http://localhost:5068
+- **Port**: http://localhost:5068 (Docker container)
 - **Purpose**: Original monolithic retail application
 - **Status**: Legacy - DO NOT MODIFY unless explicitly requested
 
 ### 2. RetailDecomposed (Modern Decomposed Application)
 - **Location**: `/RetailDecomposed/` directory
-- **Port**: http://localhost:6068 (HTTPS)
+- **Port**: http://localhost:8080 (Docker container mode)
 - **Purpose**: Modernized application with decomposed architecture and AI features
 - **Status**: ACTIVE DEVELOPMENT - **ALL CHANGES SHOULD BE MADE HERE**
 
@@ -23,15 +23,15 @@ This repository contains TWO separate ASP.NET Core applications:
 
 When the user says:
 - "the app" → RetailDecomposed
-- "run the app" → `cd RetailDecomposed; dotnet run`
+- "run the app" → `.\run-both-apps.ps1` (Docker container mode)
 - "update the configuration" → RetailDecomposed/appsettings.Development.json
 - "modify Program.cs" → RetailDecomposed/Program.cs
 - "add a service" → RetailDecomposed/Services/
 - "update a page" → RetailDecomposed/Pages/
 
-### Port Reference
-- **RetailMonolith**: http://localhost:5068 (DO NOT USE unless explicitly requested)
-- **RetailDecomposed**: http://localhost:6068 (DEFAULT - ALWAYS USE)
+### Port Reference (Docker Container Mode)
+- **RetailMonolith**: http://localhost:5068
+- **RetailDecomposed**: http://localhost:8080 (DEFAULT)
 
 ### File Paths
 When editing files, always use paths in the RetailDecomposed directory:
@@ -44,13 +44,10 @@ When editing files, always use paths in the RetailDecomposed directory:
 ### Running the Application
 **Default command**:
 ```powershell
-cd RetailDecomposed; dotnet run
+.\run-both-apps.ps1
 ```
 
-**NOT**:
-```powershell
-dotnet run  # This runs RetailMonolith from root
-```
+This runs both applications in Docker containers. The default mode is `container`.
 
 ### Configuration Files
 - **Active**: `RetailDecomposed/appsettings.Development.json`
@@ -84,9 +81,46 @@ dotnet run  # This runs RetailMonolith from root
 ## Development Workflow
 
 1. **Before any code changes**: Verify you're working in `RetailDecomposed/`
-2. **When running the app**: Use `cd RetailDecomposed; dotnet run`
-3. **When testing**: Navigate to http://localhost:6068 (HTTPS)
-4. **When debugging**: Monitor logs from RetailDecomposed process
+2. **When running the app**: Use `.\run-both-apps.ps1` (container mode)
+3. **When testing**: Navigate to http://localhost:8080
+4. **When debugging**: Monitor Docker container logs with `docker-compose -f RetailDecomposed/docker-compose.microservices.yml logs -f`
+
+## Data Seeding Rules
+
+### ⚠️ CRITICAL: Use Monolith Data Only
+**NEVER create new seed data or use custom product data. ALWAYS replicate the exact data from RetailMonolith.**
+
+#### Seed Data Requirements:
+1. **Source of Truth**: `RetailMonolith/Data/AppDbContext.cs` contains the ONLY correct seed data
+2. **RetailDecomposed MUST match**: Both applications must have identical product data, categories, descriptions, and prices
+3. **NO custom data**: Do not create new products, categories, or modify existing product information
+4. **Product Categories** (from Monolith):
+   - Beauty (10 products)
+   - Apparel (10 products)
+   - Footwear (10 products)
+   - Home (10 products)
+   - Accessories (10 products)
+   - Electronics (10 products)
+5. **SKU Format**: `SKU-0001` through `SKU-0060` (4-digit zero-padded)
+6. **Currency**: Always "GBP"
+7. **Price Range**: Random prices between £5-£105 (matching Monolith logic)
+
+#### When Working with Data:
+- ✅ Copy seed logic exactly from `RetailMonolith/Data/AppDbContext.cs`
+- ✅ Use the same product names, descriptions, and categories
+- ✅ Use the same `GenerateDescription()` method
+- ✅ Maintain consistent inventory quantities (random 10-200)
+- ❌ Never create custom SeedData.cs files with different products
+- ❌ Never modify product categories or add new ones
+- ❌ Never change the SKU format or numbering
+- ❌ Never hardcode specific prices (use random generation matching Monolith)
+
+#### Verification:
+Before committing any database changes:
+1. Compare seed data between RetailMonolith and RetailDecomposed
+2. Verify product counts match (60 total products)
+3. Verify categories match exactly
+4. Test both applications show identical product listings
 
 ## Documentation Best Practices
 
@@ -96,10 +130,12 @@ dotnet run  # This runs RetailMonolith from root
 #### Rules for Markdown Files:
 1. **Single Source of Truth**: Maintain ONE authoritative document per topic
    - ✅ `Tests/TEST_RESULTS.md` - Consolidated test results (all sessions)
-   - ❌ `Tests/TEST_RESULTS_SESSION_10.md`, `Tests/TEST_RESULTS_SESSION_11.md` - Don't create session-specific duplicates
+   - ✅ `Tests/README.md` - Test documentation with port config, running instructions
+   - ❌ `SESSION_XX_*.md`, `PORT_CONFIGURATION.md` - Don't create standalone session/config docs
 
 2. **Merge, Don't Multiply**:
    - When updating test results, update the existing `TEST_RESULTS.md`
+   - When updating port/deployment info, update `Tests/README.md`
    - Add new sections or update existing sections
    - Include session information within the main document
 
@@ -116,13 +152,30 @@ dotnet run  # This runs RetailMonolith from root
    - Check if content can be added to existing documentation
    - Search for related files: `file_search` for `*.md` files
    - Ask: "Does this information fit in an existing document?"
+   - **Preference**: Always update existing docs over creating new ones
 
-#### Existing Documentation Structure:
-- `/AI_COPILOT_COMPLETE_GUIDE.md` - AI Copilot implementation guide
+6. **Delete Obsolete Documentation**:
+   - Remove duplicate or superseded documentation files
+   - Keep only the consolidated, authoritative versions
+   - Clean up session-specific documentation after consolidation
+
+#### Primary Documentation Structure:
+- `/Tests/README.md` - Test overview, port configuration, running instructions
 - `/Tests/TEST_RESULTS.md` - Consolidated test results (all sessions)
-- `/Tests/README.md` - Test documentation overview
+- `/Tests/LOCAL_TESTING_GUIDE.md` - Docker testing detailed guide
 - `/RetailDecomposed/AUTHENTICATION_SETUP.md` - Authentication configuration
+- `/RetailDecomposed/DEPLOYMENT_GUIDE.md` - Deployment instructions
+- `/RetailDecomposed/AI_COPILOT_COMPLETE_GUIDE.md` - AI Copilot implementation
+- `/RetailDecomposed/OBSERVABILITY_GUIDE.md` - Observability setup
+- `/RetailDecomposed/SEMANTIC_SEARCH_GUIDE.md` - Semantic search implementation
 - `/.github/copilot-instructions.md` - This file (project guidelines)
+- `/README.md` - Main project README
+
+#### Documentation to AVOID Creating:
+- ❌ Session-specific docs (e.g., `SESSION_13_PORT_CONFIG.md`)
+- ❌ Duplicate config docs (e.g., `PORT_CONFIGURATION.md` when info is in Tests/README.md)
+- ❌ Standalone troubleshooting docs (add to relevant guide instead)
+- ❌ Temporary notes files (consolidate into main docs immediately)
 
 ## Production Deployment Considerations
 
@@ -173,6 +226,48 @@ dotnet run  # This runs RetailMonolith from root
 - [ ] Set up Application Insights for monitoring
 - [ ] Configure logging levels (reduce verbosity in production)
 
+## Post-Development Cleanup
+
+### 🧹 Automatic Tidying Protocol
+**After successful run of apps (local containers and Azure) and all tests pass:**
+
+Perform comprehensive cleanup automatically:
+
+1. **Code Quality**
+   - Remove unused imports and variables
+   - Fix code style inconsistencies
+   - Update outdated comments
+   - Remove TODO/FIXME comments that are resolved
+   - Ensure professional terminology (no "hack", "temp", "quick fix")
+
+2. **File Management**
+   - Delete obsolete test result files (already in .gitignore)
+   - Remove temporary or duplicate files
+   - Clean up unused assets or resources
+   - Remove commented-out code blocks
+
+3. **Documentation Consolidation**
+   - Fix broken internal links between .md files
+   - Merge duplicate documentation
+   - Update outdated information
+   - Add cross-references between related guides
+   - Ensure "Last Updated" dates are current
+   - Consolidate session-specific notes into main docs
+
+4. **Best Practices**
+   - Prefer updating existing docs over creating new files
+   - Keep single source of truth for each topic
+   - Maintain primary documentation structure (see below)
+   - Delete superseded documentation after consolidation
+
+**Primary Documentation Structure:**
+- `/Tests/README.md` - Test overview and configuration
+- `/Tests/TEST_RESULTS.md` - Consolidated test results
+- `/RetailDecomposed/DEPLOYMENT_GUIDE.md` - Deployment instructions
+- `/MONOLITH_DEPLOYMENT_GUIDE.md` - AKS deployment for monolith
+- `/README.md` - Main project README
+- `/.github/copilot-instructions.md` - This file
+
 ---
 
-**Remember**: Unless explicitly stated otherwise by the user, ALL work is on **RetailDecomposed** running at **http://localhost:6068**.
+**Remember**: Unless explicitly stated otherwise by the user, ALL work is on **RetailDecomposed** running at **http://localhost:8080**.

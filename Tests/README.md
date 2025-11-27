@@ -2,6 +2,79 @@
 
 This folder contains functional tests for both the monolithic and decomposed retail applications.
 
+## Port Configuration
+
+**Both systems can now run simultaneously!** SQL Server ports have been separated to enable running both monolith and microservices together.
+
+### SQL Server Ports
+
+| System | Container Name | Host Port | Internal Port | Database |
+|--------|---------------|-----------|---------------|----------|
+| **Monolith** | `retail-monolith-sqlserver` | **1433** | 1433 | RetailMonolith |
+| **Microservices** | `retaildecomposed-sqlserver` | **1434** | 1433 | RetailDecomposedDB |
+
+### Application Ports
+
+**Monolith:**
+- Frontend: http://localhost:5068
+- Container: `retail-monolith-app`
+
+**Microservices:**
+- Frontend: http://localhost:8080
+- Products API: http://localhost:8081
+- Cart API: http://localhost:8082
+- Orders API: http://localhost:8083
+- Checkout API: http://localhost:8084
+
+### Connection Strings
+
+```csharp
+// Monolith (external access)
+Server=localhost,1433;Database=RetailMonolith;User ID=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+
+// Microservices (external access)
+Server=localhost,1434;Database=RetailDecomposedDB;User ID=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+
+// Microservices (internal - from containers)
+Server=sqlserver;Database=RetailDecomposedDB;User ID=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+```
+
+### Running Both Systems Simultaneously
+
+```powershell
+# Terminal 1 - Start Monolith
+docker-compose up -d
+
+# Terminal 2 - Start Microservices
+cd RetailDecomposed
+docker-compose -f docker-compose.microservices.yml up -d
+
+# Verify both running
+docker ps
+
+# Stop Monolith
+docker-compose down
+
+# Stop Microservices
+cd RetailDecomposed
+docker-compose -f docker-compose.microservices.yml down
+```
+
+---
+
+## Test Types
+
+### 1. Unit/Integration Tests (.NET)
+Traditional .NET tests using xUnit and in-memory databases.
+
+### 2. Docker Compose Tests (Local Deployment)
+End-to-end tests that validate the complete Docker environment with real SQL Server.
+
+See [LOCAL_TESTING_GUIDE.md](./LOCAL_TESTING_GUIDE.md) for detailed Docker testing documentation.
+
+### 3. Azure Kubernetes Service (AKS) Tests (Cloud Deployment)
+Automated test suite for validating AKS-deployed applications including Kubernetes infrastructure, frontend UI, backend APIs, and Azure AD authentication.
+
 ## Test Projects
 
 ### 1. RetailMonolith.Tests
@@ -28,23 +101,81 @@ Functional tests for the decomposed application with API endpoints.
 
 ## Running Tests
 
-### Run All Tests
+### Run All Tests (Unit + Integration + Docker)
+
 ```powershell
 # From repository root
 .\Tests\run-all-tests.ps1
 ```
 
-### Run Monolith Tests Only
+This runs:
+
+1. RetailMonolith unit/integration tests
+2. RetailDecomposed unit/integration tests  
+3. Docker Compose local deployment tests
+4. Microservices deployment tests
+
+
+
+### Run Unit Tests Only
+
+#### Run Monolith Tests Only
 ```powershell
 # From repository root
 dotnet test .\Tests\RetailMonolith.Tests\RetailMonolith.Tests.csproj
 ```
 
-### Run Decomposed Tests Only
+#### Run Decomposed Tests Only
 ```powershell
 # From repository root
 dotnet test .\Tests\RetailDecomposed.Tests\RetailDecomposed.Tests.csproj
 ```
+
+### Run Docker Compose Tests Only
+
+```powershell
+# Complete workflow (build, start, test, cleanup)
+.\Tests\run-local-tests.ps1
+
+# Or run tests against already running containers
+.\Tests\test-local-deployment.ps1
+```
+
+See [LOCAL_TESTING_GUIDE.md](./LOCAL_TESTING_GUIDE.md) for detailed Docker testing documentation.
+
+### Run Azure Kubernetes Service (AKS) Tests Only
+
+```powershell
+# Test AKS deployment (auto-detects ingress IP from cluster)
+.\Tests\test-aks-deployment.ps1
+
+# Requires:
+# - kubectl configured with AKS cluster context
+# - NGINX ingress controller deployed
+# - Application deployed in 'retail-decomposed' namespace
+```
+
+The AKS test suite includes:
+
+- ✅ **Kubernetes Infrastructure** (12 tests)
+  - Pod status and health (all pods Running and Ready)
+  - Service configurations (ClusterIP, ports)
+  - Ingress configuration (NGINX, TLS, external IP)
+  
+- ✅ **Frontend UI** (5 tests)
+  - Home, Products, Cart, Orders, Checkout pages
+  - HTTP status codes and content validation
+  
+- ✅ **Backend APIs** (3 tests)
+  - Products API (list and single product)
+  - Health endpoint checks
+  
+- ✅ **Authentication** (2 tests)
+  - Azure AD redirect flow
+  - OIDC callback endpoint
+
+- 📊 JSON results exported with timestamp
+- 🎯 Total: 22 automated tests across 4 categories
 
 ### Run Tests with Detailed Output
 ```powershell
@@ -156,11 +287,14 @@ dotnet test --filter "MyNewTests"
 
 ## Test Metrics
 
-| Project | Test Files | Test Cases | Coverage |
-|---------|-----------|------------|----------|
+| Test Suite | Test Files | Test Cases | Coverage |
+|------------|-----------|------------|----------|
 | RetailMonolith.Tests | 4 | ~15 | Pages |
-| RetailDecomposed.Tests | 3 | ~20 | APIs + Pages |
-| **Total** | **7** | **~35** | **Full Stack** |
+| RetailDecomposed.Tests | 3 | ~127 | APIs + Pages + Observability |
+| Docker Compose Tests | 2 | ~11 | Monolith Deployment |
+| Microservices Tests | 1 | ~32 | Local Microservices |
+| Azure Kubernetes Tests | 1 | 22 | Cloud Deployment (AKS) |
+| **Total** | **11** | **~192** | **Full Stack + Cloud** |
 
 ## Best Practices
 

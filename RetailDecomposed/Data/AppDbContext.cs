@@ -1,10 +1,11 @@
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using RetailDecomposed.Models;
 
 namespace RetailDecomposed.Data
 {
-    public class AppDbContext:DbContext
+    public class AppDbContext : DbContext, IDataProtectionKeyContext
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
@@ -17,6 +18,9 @@ namespace RetailDecomposed.Data
 
         public DbSet<Order> Orders => Set<Order>();
         public DbSet<OrderLine> OrderLines => Set<OrderLine>();
+
+        // Data Protection Keys for shared authentication across pods
+        public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
       
 

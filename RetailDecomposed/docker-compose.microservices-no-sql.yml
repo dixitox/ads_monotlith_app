@@ -1,0 +1,130 @@
+# Docker Compose configuration for RetailDecomposed Microservices Architecture
+# This file orchestrates 5 microservices ONLY (no SQL Server)
+# Assumes SQL Server is already running at host.docker.internal:1433 (the 'retail' container)
+# Architecture: Products (8081), Cart (8082), Orders (8083), Checkout (8084), Frontend (8080)
+# Inter-service communication via HTTP REST APIs
+
+networks:
+  retail-network:
+    driver: bridge
+    external: false
+
+services:
+  # ============================================================================
+  # Products Microservice (Port 8081)
+  # ============================================================================
+  products-service:
+    image: retaildecomposed-products:latest
+    container_name: retaildecomposed-products
+    hostname: products-service
+    build:
+      context: .
+      dockerfile: Dockerfile.products
+    ports:
+      - "8081:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=host.docker.internal,1433;Database=RetailDecomposed;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+    networks:
+      - retail-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # Cart Microservice (Port 8082)
+  # ============================================================================
+  cart-service:
+    image: retaildecomposed-cart:latest
+    container_name: retaildecomposed-cart
+    hostname: cart-service
+    build:
+      context: .
+      dockerfile: Dockerfile.cart
+    ports:
+      - "8082:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=host.docker.internal,1433;Database=RetailDecomposed;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+      - ProductsApiUrl=http://products-service:8080
+    networks:
+      - retail-network
+    depends_on:
+      - products-service
+    restart: unless-stopped
+
+  # ============================================================================
+  # Orders Microservice (Port 8083)
+  # ============================================================================
+  orders-service:
+    image: retaildecomposed-orders:latest
+    container_name: retaildecomposed-orders
+    hostname: orders-service
+    build:
+      context: .
+      dockerfile: Dockerfile.orders
+    ports:
+      - "8083:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=host.docker.internal,1433;Database=RetailDecomposed;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+    networks:
+      - retail-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # Checkout Microservice (Port 8084)
+  # ============================================================================
+  checkout-service:
+    image: retaildecomposed-checkout:latest
+    container_name: retaildecomposed-checkout
+    hostname: checkout-service
+    build:
+      context: .
+      dockerfile: Dockerfile.checkout
+    ports:
+      - "8084:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=host.docker.internal,1433;Database=RetailDecomposed;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+      - ProductsApiUrl=http://products-service:8080
+      - CartApiUrl=http://cart-service:8080
+      - OrdersApiUrl=http://orders-service:8080
+    networks:
+      - retail-network
+    depends_on:
+      - products-service
+      - cart-service
+      - orders-service
+    restart: unless-stopped
+
+  # ============================================================================
+  # Frontend UI (Port 8080)
+  # ============================================================================
+  frontend-service:
+    image: retaildecomposed-frontend:latest
+    container_name: retaildecomposed-frontend
+    hostname: frontend-service
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=host.docker.internal,1433;Database=RetailDecomposed;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+      - ProductsServiceUrl=http://products-service:8080
+      - CartServiceUrl=http://cart-service:8080
+      - OrdersServiceUrl=http://orders-service:8080
+      - CheckoutServiceUrl=http://checkout-service:8080
+    networks:
+      - retail-network
+    depends_on:
+      - products-service
+      - cart-service
+      - orders-service
+      - checkout-service
+    restart: unless-stopped

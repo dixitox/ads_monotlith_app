@@ -1,0 +1,63 @@
+# .dockerignore for RetailDecomposed Microservices
+# Exclude unnecessary files from Docker build context
+
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+
+# Visual Studio / Visual Studio Code
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Test projects and results
+**/Tests/
+**/*.Tests/
+TestResults/
+*.trx
+
+# NuGet packages (will be restored during build)
+*.nupkg
+*.snupkg
+packages/
+
+# Database files
+*.mdf
+*.ldf
+*.ndf
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docker files (except when building)
+docker-compose*
+.dockerignore
+
+# Scripts
+*.ps1
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+
+# Documentation (not needed in runtime)
+*.md
+LICENSE
+
+# Keep Migrations folder - DO NOT EXCLUDE
+# !Migrations/

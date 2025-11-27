@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: retail-decomposed
+  labels:
+    name: retail-decomposed
+    app: retail-microservices
+    environment: production

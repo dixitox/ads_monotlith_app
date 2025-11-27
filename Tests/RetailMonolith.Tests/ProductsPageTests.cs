@@ -49,7 +49,7 @@ public class ProductsPageTests : IClassFixture<MonolithWebApplicationFactory>
 
         // Assert - Check for product name, price, and category (SKU not displayed on page)
         Assert.Contains("Test Product 1", content);
-        Assert.Contains("&#xA3;10.99", content); // HTML entity for £
+        Assert.Contains("£10.99", content); // £ symbol with price
         Assert.Contains("Electronics", content);
     }
 
