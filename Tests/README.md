@@ -72,10 +72,7 @@ End-to-end tests that validate the complete Docker environment with real SQL Ser
 
 See [LOCAL_TESTING_GUIDE.md](./LOCAL_TESTING_GUIDE.md) for detailed Docker testing documentation.
 
-### 3. Azure Container Apps Tests (Cloud Deployment)
-Comprehensive tests for Azure-deployed microservices including health checks, UI tests, performance, security, and availability.
-
-### 4. Azure Kubernetes Service (AKS) Tests
+### 3. Azure Kubernetes Service (AKS) Tests (Cloud Deployment)
 Automated test suite for validating AKS-deployed applications including Kubernetes infrastructure, frontend UI, backend APIs, and Azure AD authentication.
 
 ## Test Projects
@@ -118,17 +115,7 @@ This runs:
 3. Docker Compose local deployment tests
 4. Microservices deployment tests
 
-### Run All Tests Including Azure Deployment
 
-```powershell
-# Set environment variables for Azure testing
-$env:AZURE_FRONTEND_URL = "https://retaildecomposed-frontend.uksouth.azurecontainerapps.io"
-$env:AZURE_RESOURCE_GROUP = "rg-retail-decomposed"  # Optional
-$env:SKIP_AZURE_CONTAINER_CHECKS = "false"  # Optional
-
-# Run all tests
-.\Tests\run-all-tests.ps1
-```
 
 ### Run Unit Tests Only
 
@@ -155,28 +142,6 @@ dotnet test .\Tests\RetailDecomposed.Tests\RetailDecomposed.Tests.csproj
 ```
 
 See [LOCAL_TESTING_GUIDE.md](./LOCAL_TESTING_GUIDE.md) for detailed Docker testing documentation.
-
-### Run Azure Container Apps Tests Only
-
-```powershell
-# Test Azure deployment with all checks
-.\Tests\test-azure-deployment.ps1 -FrontendUrl "https://retaildecomposed-frontend.uksouth.azurecontainerapps.io" -ResourceGroup "rg-retail-decomposed"
-
-# Test without Azure Container Apps status checks (if you don't have Azure CLI access)
-.\Tests\test-azure-deployment.ps1 -FrontendUrl "https://retaildecomposed-frontend.uksouth.azurecontainerapps.io" -SkipContainerChecks
-```
-
-The Azure Container Apps test suite includes:
-
-- ✅ Container Apps health and status (optional)
-- ✅ Frontend UI page load tests
-- ✅ Authentication and login tests
-- ✅ Static assets (CSS, JS) loading
-- ✅ Performance and response time analysis
-- ✅ SSL/TLS and security header checks
-- ✅ Error handling (404, invalid IDs)
-- ✅ Service availability and reliability (10 rapid requests)
-- 📊 HTML and JSON reports generated automatically
 
 ### Run Azure Kubernetes Service (AKS) Tests Only
 
@@ -328,9 +293,8 @@ dotnet test --filter "MyNewTests"
 | RetailDecomposed.Tests | 3 | ~127 | APIs + Pages + Observability |
 | Docker Compose Tests | 2 | ~11 | Monolith Deployment |
 | Microservices Tests | 1 | ~32 | Local Microservices |
-| Azure Container Apps Tests | 1 | ~25 | Cloud Deployment (ACA) |
 | Azure Kubernetes Tests | 1 | 22 | Cloud Deployment (AKS) |
-| **Total** | **12** | **~217** | **Full Stack + Cloud** |
+| **Total** | **11** | **~192** | **Full Stack + Cloud** |
 
 ## Best Practices
 
